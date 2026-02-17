@@ -291,6 +291,15 @@ class TestProjectMetadata:
         assert "python" not in result.declared_dependencies["core"]
         assert "pytest" in result.declared_dependencies["dev"]
 
+    def test_poetry_version_and_description(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[tool.poetry]\nname = "gorgon"\nversion = "1.2.0"\ndescription = "AI agent runtime"\n'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.version == "1.2.0"
+        assert result.description == "AI agent runtime"
+
 
 class TestDogfood:
     def test_scan_self(self) -> None:

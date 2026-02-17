@@ -250,6 +250,27 @@ class CodebaseScanner:
                     re.split(r"[><=!~;\[]", d)[0].strip() for d in dev_deps
                 ]
 
+        # Fallback: [tool.poetry] version/description.
+        if not structure.version or not structure.description:
+            in_poetry = False
+            for line in content.splitlines():
+                stripped = line.strip()
+                if stripped == "[tool.poetry]":
+                    in_poetry = True
+                    continue
+                if in_poetry and stripped.startswith("["):
+                    break
+                if not in_poetry:
+                    continue
+                if not structure.version:
+                    m = re.match(r'version\s*=\s*"([^"]+)"', stripped)
+                    if m:
+                        structure.version = m.group(1)
+                if not structure.description:
+                    m = re.match(r'description\s*=\s*"([^"]+)"', stripped)
+                    if m:
+                        structure.description = m.group(1)
+
         # Fallback: [tool.poetry.dependencies].
         if "core" not in structure.declared_dependencies:
             poetry_deps = self._parse_toml_table_keys(content, "[tool.poetry.dependencies]")
