@@ -206,3 +206,108 @@ FRAMEWORK_PRESETS: dict[str, FrameworkPreset] = {
         },
     ),
 }
+
+# --- Premium presets (Pro tier) ---
+
+PREMIUM_PRESETS: dict[str, FrameworkPreset] = {
+    "react-native": FrameworkPreset(
+        name="React Native",
+        description="React Native mobile application with TypeScript",
+        coding_standards=[
+            "Use functional components with hooks exclusively",
+            "Define prop types with TypeScript interfaces, not `any`",
+            "Use React Navigation for routing and navigation",
+            "Keep platform-specific code in `.ios.tsx` / `.android.tsx` files",
+            "Use Flexbox for all layouts — no absolute positioning",
+        ],
+        anti_patterns=[
+            "Do NOT use class components",
+            "Do NOT use inline styles — use StyleSheet.create()",
+            "Do NOT use `any` type — define proper interfaces",
+            "Do NOT use synchronous storage — use async-storage",
+            "Do NOT hardcode dimensions — use Dimensions API or responsive units",
+        ],
+        common_commands={
+            "start": "npx react-native start",
+            "ios": "npx react-native run-ios",
+            "android": "npx react-native run-android",
+            "test": "npm test",
+            "lint": "npm run lint",
+        },
+    ),
+    "data-science": FrameworkPreset(
+        name="Data Science / ML",
+        description="Data science project with notebooks and pipelines",
+        coding_standards=[
+            "Keep notebooks for exploration, .py files for production code",
+            "Use type hints on all function signatures",
+            "Document data schemas and column meanings in docstrings",
+            "Pin all dependency versions in requirements.txt",
+            "Use logging module — never print() in pipeline code",
+        ],
+        anti_patterns=[
+            "Do NOT commit large data files — use DVC or git-lfs",
+            "Do NOT hardcode file paths — use pathlib and config",
+            "Do NOT use global mutable state for model parameters",
+            "Do NOT suppress warnings globally — fix the root cause",
+            "Do NOT leave debug cells in committed notebooks",
+        ],
+        common_commands={
+            "install": "pip install -r requirements.txt",
+            "notebook": "jupyter lab",
+            "test": "pytest tests/ -v",
+            "lint": "ruff check src/",
+            "train": "python -m src.train --config configs/default.yaml",
+        },
+    ),
+    "devops": FrameworkPreset(
+        name="DevOps / Infrastructure",
+        description="Infrastructure-as-code and CI/CD pipelines",
+        coding_standards=[
+            "Use declarative configuration over imperative scripts",
+            "Pin all tool and image versions explicitly",
+            "Use environment variables for secrets — never hardcode",
+            "Tag all cloud resources with owner, project, and environment",
+            "Write idempotent scripts — safe to re-run without side effects",
+        ],
+        anti_patterns=[
+            "Do NOT store secrets in version control",
+            "Do NOT use `latest` tags for Docker images",
+            "Do NOT write non-idempotent deployment scripts",
+            "Do NOT skip health checks in container definitions",
+            "Do NOT use root user in containers — create a non-root user",
+        ],
+        common_commands={
+            "plan": "terraform plan",
+            "apply": "terraform apply",
+            "validate": "terraform validate",
+            "lint": "tflint && hadolint Dockerfile",
+            "build": "docker build -t app:latest .",
+        },
+    ),
+    "mobile": FrameworkPreset(
+        name="Mobile (Cross-platform)",
+        description="Cross-platform mobile app (Flutter, Kotlin Multiplatform)",
+        coding_standards=[
+            "Separate business logic from UI layer",
+            "Use dependency injection for services and repositories",
+            "Write platform-agnostic code in shared modules",
+            "Use responsive layouts — support multiple screen sizes",
+            "Follow platform-specific design guidelines (Material/HIG)",
+        ],
+        anti_patterns=[
+            "Do NOT mix business logic with UI code",
+            "Do NOT hardcode strings — use localization system",
+            "Do NOT ignore platform lifecycle events",
+            "Do NOT block the main/UI thread with heavy computation",
+            "Do NOT store sensitive data in plain text on device",
+        ],
+        common_commands={
+            "run": "flutter run",
+            "test": "flutter test",
+            "build": "flutter build apk && flutter build ios",
+            "lint": "flutter analyze",
+            "format": "dart format .",
+        },
+    ),
+}

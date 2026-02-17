@@ -15,3 +15,7 @@ class AnalysisError(ForgeError):
 
 class TemplateError(ForgeError):
     """Raised when template rendering fails."""
+
+
+class LicenseError(ForgeError):
+    """Raised when a feature requires a higher license tier."""

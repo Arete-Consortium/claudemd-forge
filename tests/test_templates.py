@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from claudemd_forge.templates.base import BaseTemplate
-from claudemd_forge.templates.frameworks import FRAMEWORK_PRESETS
+from claudemd_forge.templates.frameworks import FRAMEWORK_PRESETS, PREMIUM_PRESETS
 from claudemd_forge.templates.presets import PRESET_PACKS
 
 
@@ -107,3 +107,46 @@ class TestPresetPacks:
         """Requesting a non-existent framework should not crash."""
         result = FRAMEWORK_PRESETS.get("nonexistent-framework")
         assert result is None  # Graceful fallback.
+
+
+class TestPremiumPresets:
+    def test_at_least_four_premium_presets(self) -> None:
+        assert len(PREMIUM_PRESETS) >= 4
+
+    def test_all_premium_presets_have_required_fields(self) -> None:
+        for name, preset in PREMIUM_PRESETS.items():
+            assert preset.name, f"{name} missing name"
+            assert preset.description, f"{name} missing description"
+            assert len(preset.coding_standards) > 0, f"{name} missing coding standards"
+            assert len(preset.anti_patterns) > 0, f"{name} missing anti-patterns"
+            assert len(preset.common_commands) > 0, f"{name} missing commands"
+
+    def test_react_native_preset(self) -> None:
+        preset = PREMIUM_PRESETS["react-native"]
+        assert any("hooks" in s.lower() for s in preset.coding_standards)
+        assert any("stylesheet" in s.lower() for s in preset.anti_patterns)
+
+    def test_data_science_preset(self) -> None:
+        preset = PREMIUM_PRESETS["data-science"]
+        assert any("notebook" in s.lower() for s in preset.coding_standards)
+
+    def test_devops_preset(self) -> None:
+        preset = PREMIUM_PRESETS["devops"]
+        assert any(
+            "terraform" in s.lower() or "declarative" in s.lower() for s in preset.coding_standards
+        )
+
+    def test_mobile_preset(self) -> None:
+        preset = PREMIUM_PRESETS["mobile"]
+        assert any("platform" in s.lower() for s in preset.coding_standards)
+
+    def test_premium_anti_patterns_format(self) -> None:
+        """All premium preset anti-patterns start with 'Do NOT'."""
+        for _name, preset in PREMIUM_PRESETS.items():
+            for ap in preset.anti_patterns:
+                assert ap.startswith("Do NOT"), f"Bad format: {ap}"
+
+    def test_no_overlap_with_community(self) -> None:
+        """Premium preset keys should not conflict with community ones."""
+        for name in PREMIUM_PRESETS:
+            assert name not in FRAMEWORK_PRESETS

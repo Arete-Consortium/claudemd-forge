@@ -14,7 +14,14 @@ from rich.table import Table
 from claudemd_forge import __version__
 from claudemd_forge.analyzers import run_all
 from claudemd_forge.exceptions import ForgeError
+from claudemd_forge.gates import check_preset_access, require_pro
 from claudemd_forge.generators.composer import DocumentComposer
+from claudemd_forge.licensing import (
+    PRO_PRESETS,
+    TIER_DEFINITIONS,
+    Tier,
+    get_license_info,
+)
 from claudemd_forge.models import ForgeConfig
 from claudemd_forge.scanner import CodebaseScanner
 
@@ -55,6 +62,9 @@ def generate(
         if not root.is_dir():
             console.print(f"[red]Error:[/red] {root} is not a directory.")
             raise typer.Exit(1)
+
+        # Check preset access before doing any work.
+        check_preset_access(preset)
 
         out_path = output or (root / "CLAUDE.md")
         if out_path.exists() and not force:
@@ -187,10 +197,11 @@ def audit(
 
 
 @app.command()
+@require_pro("init_interactive")
 def init(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
-    """Initialize a CLAUDE.md with interactive prompts."""
+    """Initialize a CLAUDE.md with interactive prompts. [Pro]"""
     try:
         root = path.resolve()
         if not root.is_dir():
@@ -227,10 +238,11 @@ def init(
 
 
 @app.command()
+@require_pro("diff")
 def diff(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
-    """Show what would change if CLAUDE.md were regenerated."""
+    """Show what would change if CLAUDE.md were regenerated. [Pro]"""
     try:
         root = path.resolve()
         existing_path = root / "CLAUDE.md"
@@ -280,34 +292,114 @@ def presets() -> None:
     """List available template presets."""
     from claudemd_forge.templates.presets import PRESET_PACKS
 
+    info = get_license_info()
     table = Table(title="Available Presets")
     table.add_column("Name", style="bold")
     table.add_column("Description")
+    table.add_column("Tier")
     table.add_column("Auto-detect")
 
     for name, pack in PRESET_PACKS.items():
-        table.add_row(name, pack.description, "Yes" if pack.auto_detect else "No")
+        if name in PRO_PRESETS:
+            tier_label = (
+                "[green]Unlocked[/green]" if info.tier == Tier.PRO else "[yellow]Pro[/yellow]"
+            )
+        else:
+            tier_label = "[dim]Free[/dim]"
+        table.add_row(
+            name,
+            pack.description,
+            tier_label,
+            "Yes" if pack.auto_detect else "No",
+        )
 
     console.print(table)
+
+    if info.tier == Tier.FREE:
+        console.print(
+            "\n[dim]Upgrade to Pro for premium presets: https://claudemd-forge.dev/pro[/dim]"
+        )
 
 
 @app.command()
 def frameworks() -> None:
     """List available framework presets."""
-    from claudemd_forge.templates.frameworks import FRAMEWORK_PRESETS
+    from claudemd_forge.templates.frameworks import (
+        FRAMEWORK_PRESETS,
+        PREMIUM_PRESETS,
+    )
+
+    info = get_license_info()
 
     table = Table(title="Framework Presets")
     table.add_column("Preset", style="bold")
     table.add_column("Description")
+    table.add_column("Tier")
     table.add_column("Standards")
     table.add_column("Anti-patterns")
 
+    # Community presets (free).
     for name, preset in FRAMEWORK_PRESETS.items():
         table.add_row(
             name,
             preset.description,
+            "[dim]Free[/dim]",
+            str(len(preset.coding_standards)),
+            str(len(preset.anti_patterns)),
+        )
+
+    # Premium presets.
+    for name, preset in PREMIUM_PRESETS.items():
+        tier_label = "[green]Unlocked[/green]" if info.tier == Tier.PRO else "[yellow]Pro[/yellow]"
+        table.add_row(
+            name,
+            preset.description,
+            tier_label,
             str(len(preset.coding_standards)),
             str(len(preset.anti_patterns)),
         )
 
     console.print(table)
+
+    if info.tier == Tier.FREE:
+        console.print(
+            "\n[dim]Upgrade to Pro for premium presets: https://claudemd-forge.dev/pro[/dim]"
+        )
+
+
+@app.command()
+def status() -> None:
+    """Show current license status and available features."""
+    info = get_license_info()
+    tier_config = TIER_DEFINITIONS[info.tier]
+
+    tier_style = "green" if info.tier == Tier.PRO else "blue"
+    console.print(
+        Panel(
+            f"  Tier: [{tier_style}]{tier_config.name}[/{tier_style}] "
+            f"({tier_config.price_label})\n"
+            f"  License: {'Valid' if info.valid else 'None'}\n"
+            f"  Features: {len(tier_config.features)}",
+            title="ClaudeMD Forge License",
+            border_style=tier_style,
+        )
+    )
+
+    table = Table(title="Feature Access")
+    table.add_column("Feature", style="bold")
+    table.add_column("Status")
+
+    # Show all Pro features with their status.
+    pro_config = TIER_DEFINITIONS[Tier.PRO]
+    for feature in pro_config.features:
+        if feature in tier_config.features:
+            table.add_row(feature, "[green]Available[/green]")
+        else:
+            table.add_row(feature, "[yellow]Pro only[/yellow]")
+
+    console.print(table)
+
+    if info.tier == Tier.FREE:
+        console.print(
+            "\n[dim]Upgrade to Pro ($8/mo or $69/yr): https://claudemd-forge.dev/pro[/dim]"
+        )
