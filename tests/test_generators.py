@@ -116,6 +116,23 @@ class TestSectionGenerator:
         result = gen.generate_dependencies([analysis], structure)
         assert "django" in result
 
+    def test_architecture_tree_excludes_db_files(self, tmp_path: Path) -> None:
+        (tmp_path / "app.py").write_text("x = 1\n")
+        (tmp_path / "data.db").write_bytes(b"SQLite")
+        (tmp_path / "data.db-journal").write_bytes(b"j")
+        (tmp_path / "data.db-shm").write_bytes(b"s")
+        (tmp_path / "data.db-wal").write_bytes(b"w")
+        (tmp_path / ".coverage").write_bytes(b"c")
+        (tmp_path / ".env").write_text("SECRET=x\n")
+        config = ForgeConfig(root_path=tmp_path)
+        structure = CodebaseScanner(config).scan()
+        gen = SectionGenerator()
+        result = gen.generate_architecture(structure)
+        assert "app.py" in result
+        assert "data.db" not in result
+        assert ".coverage" not in result
+        assert ".env" not in result
+
     def test_generate_git_conventions(self, tmp_project: Path) -> None:
         config = ForgeConfig(root_path=tmp_project)
         structure = CodebaseScanner(config).scan()

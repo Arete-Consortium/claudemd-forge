@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import fnmatch
+
+from claudemd_forge.config import ARCHITECTURE_EXCLUDE_FILES
 from claudemd_forge.models import AnalysisResult, ProjectStructure
 
 # Anti-pattern rules keyed by detection signal.
@@ -123,7 +126,14 @@ class SectionGenerator:
                 if len(children) > 10:
                     lines.append(f"│   └── ... ({len(children) - 10} more)")
 
-        for f_name in sorted(top_files):
+        # Filter runtime artifacts from top-level files.
+        filtered_files = {
+            f
+            for f in top_files
+            if not any(fnmatch.fnmatch(f, pat) for pat in ARCHITECTURE_EXCLUDE_FILES)
+        }
+
+        for f_name in sorted(filtered_files):
             lines.append(f"├── {f_name}")
 
         lines.append("```")

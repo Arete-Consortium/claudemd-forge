@@ -21,7 +21,22 @@ DEFAULT_EXCLUDE_DIRS: list[str] = [
     ".idea",
     ".vscode",
     ".DS_Store",
+    ".coverage",
+    "htmlcov",
+    "*.pyc",
+    "*.pyo",
 ]
+
+# File-level patterns to exclude from the architecture tree display.
+ARCHITECTURE_EXCLUDE_FILES: set[str] = {
+    "*.db",
+    "*.db-journal",
+    "*.db-shm",
+    "*.db-wal",
+    ".coverage",
+    ".env",
+    ".envrc",
+}
 
 LANGUAGE_EXTENSIONS: dict[str, str] = {
     ".py": "Python",

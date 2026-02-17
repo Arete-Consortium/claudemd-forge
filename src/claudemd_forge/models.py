@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from claudemd_forge.config import DEFAULT_EXCLUDE_DIRS
+
 
 class FileInfo(BaseModel):
     """Information about a single file in the project."""
@@ -66,25 +68,7 @@ class ForgeConfig(BaseModel):
     output_path: Path | None = None
     preset: str = "default"
     include_patterns: list[str] = Field(default_factory=lambda: ["*"])
-    exclude_patterns: list[str] = Field(
-        default_factory=lambda: [
-            "node_modules",
-            ".git",
-            "__pycache__",
-            ".venv",
-            "venv",
-            "dist",
-            "build",
-            ".next",
-            "target",
-            ".tox",
-            ".mypy_cache",
-            ".ruff_cache",
-            ".pytest_cache",
-            ".eggs",
-            "*.egg-info",
-        ]
-    )
+    exclude_patterns: list[str] = Field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
     max_file_size_kb: int = 500
     max_files: int = 5000
 

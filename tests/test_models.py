@@ -169,6 +169,12 @@ class TestForgeConfig:
         assert "node_modules" in config.exclude_patterns
         assert ".git" in config.exclude_patterns
 
+    def test_exclude_patterns_includes_runtime_artifacts(self) -> None:
+        config = ForgeConfig(root_path=Path("/tmp"))
+        assert ".coverage" in config.exclude_patterns
+        assert "htmlcov" in config.exclude_patterns
+        assert "*.pyc" in config.exclude_patterns
+
     def test_custom_values(self) -> None:
         config = ForgeConfig(
             root_path=Path("/tmp"),
