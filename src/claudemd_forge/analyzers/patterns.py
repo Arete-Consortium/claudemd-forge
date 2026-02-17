@@ -20,9 +20,16 @@ class PatternAnalyzer:
         """Sample source files and detect conventions."""
         findings: dict[str, object] = {}
 
-        # Collect source files (not config/markup).
+        # Collect source files (not config/markup), prioritizing primary language.
         source_files = [f for f in structure.files if LANGUAGE_EXTENSIONS.get(f.extension)]
-        sample = source_files[:_MAX_SAMPLE_FILES]
+        if structure.primary_language:
+            primary = structure.primary_language
+            primary_exts = {ext for ext, lang in LANGUAGE_EXTENSIONS.items() if lang == primary}
+            primary_files = [f for f in source_files if f.extension in primary_exts]
+            other_files = [f for f in source_files if f.extension not in primary_exts]
+            sample = (primary_files + other_files)[:_MAX_SAMPLE_FILES]
+        else:
+            sample = source_files[:_MAX_SAMPLE_FILES]
 
         if not sample:
             return AnalysisResult(

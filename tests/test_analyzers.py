@@ -102,6 +102,27 @@ class TestPatternAnalyzer:
         result = PatternAnalyzer().analyze(structure, config)
         assert result.findings["naming"] == "snake_case"
 
+    def test_python_primary_with_many_ts_files_alphabetically_first(self, tmp_path: Path) -> None:
+        """Python files sampled even when TS files sort first alphabetically."""
+        # Create TS files in apps/ (sorts before backend/).
+        apps = tmp_path / "apps" / "web"
+        apps.mkdir(parents=True)
+        for i in range(15):
+            (apps / f"component{i}.ts").write_text(
+                f"const handle{i} = () => null;\nfunction render{i}(): void {{}}\n"
+            )
+        # Create Python files in backend/.
+        backend = tmp_path / "backend"
+        backend.mkdir()
+        for i in range(20):
+            (backend / f"module{i}.py").write_text(
+                f"def get_item_{i}():\n    pass\n\ndef process_data_{i}():\n    pass\n"
+            )
+        structure, config = _scan(tmp_path)
+        assert structure.primary_language == "Python"
+        result = PatternAnalyzer().analyze(structure, config)
+        assert result.findings["naming"] == "snake_case"
+
     def test_ts_primary_reports_camelcase(self, tmp_path: Path) -> None:
         """TypeScript-primary project should report camelCase."""
         (tmp_path / "index.ts").write_text(
