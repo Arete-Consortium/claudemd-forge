@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import fnmatch
+import json
 import logging
+import re
 from pathlib import Path
 
 from claudemd_forge.config import CONFIG_LANGUAGES, LANGUAGE_EXTENSIONS
@@ -78,7 +80,7 @@ class CodebaseScanner:
         languages = self._detect_languages(files)
         primary = self._get_primary_language(languages)
 
-        return ProjectStructure(
+        structure = ProjectStructure(
             root=root,
             files=files,
             directories=sorted_dirs,
@@ -87,6 +89,8 @@ class CodebaseScanner:
             primary_language=primary,
             languages=languages,
         )
+        self._extract_project_metadata(structure)
+        return structure
 
     def _walk(self, root: Path) -> list[Path]:
         """Walk directory tree, respecting exclude patterns and symlink cycles."""
@@ -190,3 +194,159 @@ class CodebaseScanner:
         if not candidates:
             return None
         return max(candidates, key=lambda k: candidates[k])
+
+    def _extract_project_metadata(self, structure: ProjectStructure) -> None:
+        """Extract version, description, and dependencies from manifest files."""
+        root = structure.root
+        self._extract_pyproject_metadata(root, structure)
+        self._extract_package_json_metadata(root, structure)
+        self._extract_cargo_metadata(root, structure)
+        if not structure.description:
+            self._extract_readme_description(root, structure)
+
+    def _extract_pyproject_metadata(self, root: Path, structure: ProjectStructure) -> None:
+        """Parse pyproject.toml for version, description, and dependencies."""
+        pyproject = root / "pyproject.toml"
+        if not pyproject.is_file():
+            return
+        try:
+            content = pyproject.read_text(errors="replace")
+        except OSError:
+            return
+
+        # Parse [project] section fields.
+        in_project = False
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped == "[project]":
+                in_project = True
+                continue
+            if in_project and stripped.startswith("["):
+                break
+            if not in_project:
+                continue
+            if not structure.version:
+                m = re.match(r'version\s*=\s*"([^"]+)"', stripped)
+                if m:
+                    structure.version = m.group(1)
+            if not structure.description:
+                m = re.match(r'description\s*=\s*"([^"]+)"', stripped)
+                if m:
+                    structure.description = m.group(1)
+
+        # Parse [project] dependencies = [...] (may be multi-line).
+        if "core" not in structure.declared_dependencies:
+            deps = self._parse_toml_string_array(content, "dependencies")
+            if deps:
+                structure.declared_dependencies["core"] = [
+                    re.split(r"[><=!~;\[]", d)[0].strip() for d in deps
+                ]
+
+        # Parse [project.optional-dependencies] dev = [...].
+        if "dev" not in structure.declared_dependencies:
+            dev_deps = self._parse_toml_string_array(content, "dev")
+            if dev_deps:
+                structure.declared_dependencies["dev"] = [
+                    re.split(r"[><=!~;\[]", d)[0].strip() for d in dev_deps
+                ]
+
+        # Fallback: [tool.poetry.dependencies].
+        if "core" not in structure.declared_dependencies:
+            poetry_deps = self._parse_toml_table_keys(content, "[tool.poetry.dependencies]")
+            if poetry_deps:
+                structure.declared_dependencies["core"] = [d for d in poetry_deps if d != "python"]
+        if "dev" not in structure.declared_dependencies:
+            poetry_dev = self._parse_toml_table_keys(content, "[tool.poetry.dev-dependencies]")
+            if poetry_dev:
+                structure.declared_dependencies["dev"] = poetry_dev
+
+    def _parse_toml_string_array(self, content: str, key: str) -> list[str]:
+        """Parse a TOML string array like: key = ["a", "b"]."""
+        # Match single-line array.
+        pattern = rf"{key}\s*=\s*\[([^\]]*)\]"
+        m = re.search(pattern, content, re.DOTALL)
+        if not m:
+            return []
+        raw = m.group(1)
+        items = [s.strip().strip('"').strip("'") for s in raw.split(",")]
+        return [i for i in items if i]
+
+    def _parse_toml_table_keys(self, content: str, header: str) -> list[str]:
+        """Extract key names from a TOML table section."""
+        keys: list[str] = []
+        in_section = False
+        for line in content.splitlines():
+            stripped = line.strip()
+            if stripped == header:
+                in_section = True
+                continue
+            if in_section and stripped.startswith("["):
+                break
+            if in_section:
+                m = re.match(r"(\S+)\s*=", stripped)
+                if m:
+                    keys.append(m.group(1))
+        return keys
+
+    def _extract_package_json_metadata(self, root: Path, structure: ProjectStructure) -> None:
+        """Parse package.json for version, description, and dependencies."""
+        pkg = root / "package.json"
+        if not pkg.is_file():
+            return
+        try:
+            data = json.loads(pkg.read_text(errors="replace"))
+        except (json.JSONDecodeError, OSError):
+            return
+
+        if not structure.version and data.get("version"):
+            structure.version = data["version"]
+        if not structure.description and data.get("description"):
+            structure.description = data["description"]
+
+        if "core" not in structure.declared_dependencies:
+            deps = data.get("dependencies", {})
+            if deps:
+                structure.declared_dependencies["core"] = list(deps.keys())
+        if "dev" not in structure.declared_dependencies:
+            dev_deps = data.get("devDependencies", {})
+            if dev_deps:
+                structure.declared_dependencies["dev"] = list(dev_deps.keys())
+
+    def _extract_cargo_metadata(self, root: Path, structure: ProjectStructure) -> None:
+        """Parse Cargo.toml for version, description, and dependencies."""
+        cargo = root / "Cargo.toml"
+        if not cargo.is_file():
+            return
+        try:
+            content = cargo.read_text(errors="replace")
+        except OSError:
+            return
+
+        if not structure.version:
+            m = re.search(r'version\s*=\s*"([^"]+)"', content)
+            if m:
+                structure.version = m.group(1)
+        if not structure.description:
+            m = re.search(r'description\s*=\s*"([^"]+)"', content)
+            if m:
+                structure.description = m.group(1)
+
+        if "core" not in structure.declared_dependencies:
+            deps = self._parse_toml_table_keys(content, "[dependencies]")
+            if deps:
+                structure.declared_dependencies["core"] = deps
+
+    def _extract_readme_description(self, root: Path, structure: ProjectStructure) -> None:
+        """Extract first non-heading paragraph from README as fallback description."""
+        for name in ("README.md", "README.rst", "README.txt", "README"):
+            readme = root / name
+            if readme.is_file():
+                try:
+                    text = readme.read_text(errors="replace")
+                except OSError:
+                    continue
+                for para in re.split(r"\n\s*\n", text):
+                    stripped = para.strip()
+                    if stripped and not stripped.startswith("#") and not stripped.startswith("="):
+                        structure.description = stripped[:200]
+                        return

@@ -56,11 +56,14 @@ class SectionGenerator:
             lines.append("")
         return "\n".join(lines)
 
-    def generate_project_overview(self, project_name: str, description: str = "") -> str:
+    def generate_project_overview(
+        self, project_name: str, description: str = "", structure_description: str = ""
+    ) -> str:
         """Generate the project overview section."""
         lines = ["## Project Overview", ""]
-        if description:
-            lines.append(description)
+        desc = description or structure_description
+        if desc:
+            lines.append(desc)
         else:
             lines.append(f"{project_name} — TODO: Add project description.")
         lines.append("")
@@ -69,15 +72,17 @@ class SectionGenerator:
     def generate_current_state(self, structure: ProjectStructure) -> str:
         """Generate the current state section."""
         lang_count = len(structure.languages)
-        lines = [
-            "## Current State",
-            "",
-            "- **Version**: 0.1.0",
-            f"- **Language**: {structure.primary_language or 'Unknown'}",
-            f"- **Files**: {structure.total_files} across {lang_count} languages",
-            f"- **Lines**: {structure.total_lines:,}",
-            "",
-        ]
+        lines = ["## Current State", ""]
+        if structure.version:
+            lines.append(f"- **Version**: {structure.version}")
+        lines.extend(
+            [
+                f"- **Language**: {structure.primary_language or 'Unknown'}",
+                f"- **Files**: {structure.total_files} across {lang_count} languages",
+                f"- **Lines**: {structure.total_lines:,}",
+                "",
+            ]
+        )
         return "\n".join(lines)
 
     def generate_architecture(self, structure: ProjectStructure) -> str:
@@ -185,30 +190,48 @@ class SectionGenerator:
         lines.append("")
         return "\n".join(lines)
 
-    def generate_dependencies(self, analyses: list[AnalysisResult]) -> str:
-        """Generate dependencies section from analyzer findings."""
+    def generate_dependencies(
+        self, analyses: list[AnalysisResult], structure: ProjectStructure | None = None
+    ) -> str:
+        """Generate dependencies section from declared deps or analyzer findings."""
         lines = ["## Dependencies", ""]
 
-        for analysis in analyses:
-            if analysis.category != "language":
-                continue
-
-            frameworks = analysis.findings.get("frameworks", [])
-            if frameworks:
+        # Prefer declared dependencies from manifest files.
+        if structure and structure.declared_dependencies:
+            core = structure.declared_dependencies.get("core", [])
+            if core:
                 lines.append("### Core")
-                for fw in frameworks:
-                    lines.append(f"- {fw}")
+                for dep in core[:15]:
+                    lines.append(f"- {dep}")
                 lines.append("")
+            dev = structure.declared_dependencies.get("dev", [])
+            if dev:
+                lines.append("### Dev")
+                for dep in dev[:10]:
+                    lines.append(f"- {dep}")
+                lines.append("")
+        else:
+            # Fallback to framework-detection behavior.
+            for analysis in analyses:
+                if analysis.category != "language":
+                    continue
 
-            toolchains = analysis.findings.get("toolchains", {})
-            if isinstance(toolchains, dict):
-                test_fws = toolchains.get("test_frameworks", [])
-                linters = toolchains.get("linters", [])
-                if test_fws or linters:
-                    lines.append("### Dev")
-                    for tool in test_fws + linters:
-                        lines.append(f"- {tool}")
+                frameworks = analysis.findings.get("frameworks", [])
+                if frameworks:
+                    lines.append("### Core")
+                    for fw in frameworks:
+                        lines.append(f"- {fw}")
                     lines.append("")
+
+                toolchains = analysis.findings.get("toolchains", {})
+                if isinstance(toolchains, dict):
+                    test_fws = toolchains.get("test_frameworks", [])
+                    linters = toolchains.get("linters", [])
+                    if test_fws or linters:
+                        lines.append("### Dev")
+                        for tool in test_fws + linters:
+                            lines.append(f"- {tool}")
+                        lines.append("")
 
         if len(lines) <= 2:
             return ""

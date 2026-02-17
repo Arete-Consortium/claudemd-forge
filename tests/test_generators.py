@@ -61,6 +61,61 @@ class TestSectionGenerator:
         assert "## Current State" in result
         assert "Python" in result
 
+    def test_current_state_uses_structure_version(self, tmp_project: Path) -> None:
+        config = ForgeConfig(root_path=tmp_project)
+        structure = CodebaseScanner(config).scan()
+        # The tmp_project fixture has pyproject.toml with version "0.1.0"
+        gen = SectionGenerator()
+        result = gen.generate_current_state(structure)
+        assert "0.1.0" in result
+
+    def test_current_state_omits_version_when_none(self, tmp_path: Path) -> None:
+        config = ForgeConfig(root_path=tmp_path)
+        structure = CodebaseScanner(config).scan()
+        gen = SectionGenerator()
+        result = gen.generate_current_state(structure)
+        assert "Version" not in result
+
+    def test_project_overview_uses_structure_description(self) -> None:
+        gen = SectionGenerator()
+        result = gen.generate_project_overview("MyApp", structure_description="A cool tool")
+        assert "A cool tool" in result
+        assert "TODO" not in result
+
+    def test_project_overview_explicit_description_wins(self) -> None:
+        gen = SectionGenerator()
+        result = gen.generate_project_overview(
+            "MyApp", description="Explicit", structure_description="Fallback"
+        )
+        assert "Explicit" in result
+        assert "Fallback" not in result
+
+    def test_dependencies_uses_declared_deps(self, tmp_project: Path) -> None:
+        config = ForgeConfig(root_path=tmp_project)
+        structure = CodebaseScanner(config).scan()
+        gen = SectionGenerator()
+        result = gen.generate_dependencies([], structure)
+        assert "fastapi" in result
+        assert "pydantic" in result
+        assert "pytest" in result
+
+    def test_dependencies_falls_back_to_analyzer(self) -> None:
+        gen = SectionGenerator()
+        analysis = AnalysisResult(
+            category="language",
+            findings={
+                "frameworks": ["django"],
+                "toolchains": {"test_frameworks": ["pytest"], "linters": []},
+            },
+            confidence=0.8,
+            section_content="",
+        )
+        structure = ProjectStructure(
+            root=Path("/tmp"), files=[], directories=[], total_files=0, total_lines=0
+        )
+        result = gen.generate_dependencies([analysis], structure)
+        assert "django" in result
+
     def test_generate_git_conventions(self, tmp_project: Path) -> None:
         config = ForgeConfig(root_path=tmp_project)
         structure = CodebaseScanner(config).scan()

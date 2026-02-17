@@ -202,6 +202,96 @@ class TestMaxFiles:
         assert result.total_files == 10
 
 
+class TestProjectMetadata:
+    def test_pyproject_version_and_description(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "myapp"\nversion = "2.5.0"\ndescription = "A great app"\n'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.version == "2.5.0"
+        assert result.description == "A great app"
+
+    def test_pyproject_dependencies(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "myapp"\nversion = "1.0.0"\n'
+            'dependencies = ["fastapi>=0.100", "pydantic>=2.0"]\n\n'
+            "[project.optional-dependencies]\n"
+            'dev = ["pytest>=7.0", "ruff>=0.1.0"]\n'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert "fastapi" in result.declared_dependencies["core"]
+        assert "pydantic" in result.declared_dependencies["core"]
+        assert "pytest" in result.declared_dependencies["dev"]
+        assert "ruff" in result.declared_dependencies["dev"]
+
+    def test_package_json_metadata(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "package.json").write_text(
+            '{"name": "my-app", "version": "3.0.0", "description": "JS app",'
+            ' "dependencies": {"react": "^18"}, "devDependencies": {"vite": "^5"}}'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.version == "3.0.0"
+        assert result.description == "JS app"
+        assert "react" in result.declared_dependencies["core"]
+        assert "vite" in result.declared_dependencies["dev"]
+
+    def test_cargo_metadata(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "Cargo.toml").write_text(
+            '[package]\nname = "mycrate"\nversion = "0.5.1"\n'
+            'description = "A Rust crate"\n\n'
+            '[dependencies]\nserde = { version = "1" }\ntokio = "1.0"\n'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.version == "0.5.1"
+        assert result.description == "A Rust crate"
+        assert "serde" in result.declared_dependencies["core"]
+        assert "tokio" in result.declared_dependencies["core"]
+
+    def test_readme_description_fallback(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "README.md").write_text(
+            "# My Project\n\nThis is a tool for doing awesome things.\n\n## Usage\n..."
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.description == "This is a tool for doing awesome things."
+
+    def test_pyproject_takes_precedence_over_package_json(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "myapp"\nversion = "1.0.0"\ndescription = "Python first"\n'
+        )
+        (tmp_path / "package.json").write_text(
+            '{"name": "myapp", "version": "2.0.0", "description": "JS second"}'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.version == "1.0.0"
+        assert result.description == "Python first"
+
+    def test_no_metadata_files(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "hello.py").write_text("x = 1\n")
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert result.version is None
+        assert result.description is None
+        assert result.declared_dependencies == {}
+
+    def test_poetry_dependencies(self, tmp_path: Path, config_for) -> None:
+        (tmp_path / "pyproject.toml").write_text(
+            '[tool.poetry]\nname = "myapp"\n\n'
+            '[tool.poetry.dependencies]\npython = "^3.11"\nfastapi = "^0.100"\n\n'
+            '[tool.poetry.dev-dependencies]\npytest = "^7.0"\n'
+        )
+        scanner = CodebaseScanner(config_for())
+        result = scanner.scan()
+        assert "fastapi" in result.declared_dependencies["core"]
+        assert "python" not in result.declared_dependencies["core"]
+        assert "pytest" in result.declared_dependencies["dev"]
+
+
 class TestDogfood:
     def test_scan_self(self) -> None:
         """Scanner should work on the claudemd-forge project itself."""

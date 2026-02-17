@@ -35,7 +35,9 @@ class DocumentComposer:
         section_map: dict[str, str] = {}
 
         section_map["header"] = self._gen.generate_header(name)
-        section_map["project_overview"] = self._gen.generate_project_overview(name)
+        section_map["project_overview"] = self._gen.generate_project_overview(
+            name, structure_description=structure.description or ""
+        )
         section_map["current_state"] = self._gen.generate_current_state(structure)
         section_map["architecture"] = self._gen.generate_architecture(structure)
 
@@ -51,7 +53,7 @@ class DocumentComposer:
             section_map["domain_context"] = self._gen.generate_domain_context(by_category["domain"])
 
         section_map["anti_patterns"] = self._gen.generate_anti_patterns(structure, analyses)
-        section_map["dependencies"] = self._gen.generate_dependencies(analyses)
+        section_map["dependencies"] = self._gen.generate_dependencies(analyses, structure)
         section_map["git_conventions"] = self._gen.generate_git_conventions(structure)
 
         # Assemble in order.

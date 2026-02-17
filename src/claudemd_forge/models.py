@@ -27,6 +27,9 @@ class ProjectStructure(BaseModel):
     total_lines: int
     primary_language: str | None = None
     languages: dict[str, int] = Field(default_factory=dict)
+    version: str | None = None
+    description: str | None = None
+    declared_dependencies: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class AnalysisResult(BaseModel):
