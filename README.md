@@ -86,6 +86,24 @@ my-api — TODO: Add project description.
 ...
 ```
 
+## Free vs Pro
+
+| Feature | Free | Pro ($8/mo) |
+|---------|:----:|:-----------:|
+| `generate` — scan and produce CLAUDE.md | Yes | Yes |
+| `audit` — score existing CLAUDE.md | Yes | Yes |
+| 11 community presets (FastAPI, React, Rust, Django...) | Yes | Yes |
+| `init` — interactive guided setup | - | Yes |
+| `diff` — detect drift between CLAUDE.md and codebase | - | Yes |
+| CI integration — GitHub Action auto-audit on PR | - | Yes |
+| 6 premium presets (monorepo, data-science, devops...) | - | Yes |
+| Team templates (shared org standards) | - | Planned |
+
+**Activate Pro:**
+```bash
+export CLAUDEMD_FORGE_LICENSE=CMDF-XXXX-XXXX-XXXX
+```
+
 ## Framework Presets
 
 | Preset | Description |
