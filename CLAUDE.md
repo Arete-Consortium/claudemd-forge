@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-claudemd-forge — TODO: Add project description.
+claudemd-forge — Generate and audit CLAUDE.md files for AI coding agents. Scans codebases to detect languages, frameworks, and conventions, then produces production-grade configuration files for Claude Code, Cursor, Windsurf, and Codex.
 
 ## Current State
 
@@ -49,7 +49,7 @@ claudemd-forge/
 - **Type Hints**: present
 - **Imports**: absolute
 - **Path Handling**: pathlib
-- **Line Length (p95)**: 78 characters
+- **Line Length**: 100 characters (configured in pyproject.toml)
 - **Error Handling**: Custom exception classes present
 
 ## Common Commands

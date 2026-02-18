@@ -183,14 +183,14 @@ class TestDocumentComposer:
         structure, analyses, config = _full_pipeline(tmp_project)
         composer = DocumentComposer(config)
         content = composer.compose(structure, analyses)
-        score = composer._estimate_quality_score(content)
+        score = composer.estimate_quality_score(content)
         assert 0 <= score <= 100
 
     def test_quality_score_nonempty_project_above_zero(self, tmp_project: Path) -> None:
         structure, analyses, config = _full_pipeline(tmp_project)
         composer = DocumentComposer(config)
         content = composer.compose(structure, analyses)
-        score = composer._estimate_quality_score(content)
+        score = composer.estimate_quality_score(content)
         assert score > 0
 
 
@@ -217,5 +217,5 @@ class TestFullPipeline:
         result = composer.compose(structure, analyses, project_name="claudemd-forge")
         assert "# CLAUDE.md — claudemd-forge" in result
         assert "Python" in result
-        score = composer._estimate_quality_score(result)
+        score = composer.estimate_quality_score(result)
         assert score > 40

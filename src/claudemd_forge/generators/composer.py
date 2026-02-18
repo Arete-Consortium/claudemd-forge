@@ -74,7 +74,7 @@ class DocumentComposer:
         content = content.rstrip() + "\n"
         return content
 
-    def _estimate_quality_score(self, content: str) -> int:
+    def estimate_quality_score(self, content: str) -> int:
         """Score 0-100 based on section coverage and content depth."""
         score = 0
 

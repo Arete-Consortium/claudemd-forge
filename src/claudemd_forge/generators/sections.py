@@ -253,7 +253,7 @@ class SectionGenerator:
             "## Git Conventions",
             "",
             "- Commit messages: Conventional commits"
-            "  (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`)",
+            " (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`)",
             "- Branch naming: `feat/description`, `fix/description`",
             "- Run tests before committing",
             "",

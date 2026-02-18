@@ -10,7 +10,7 @@ from claudemd_forge.models import AnalysisResult, ForgeConfig, ProjectStructure
 
 logger = logging.getLogger(__name__)
 
-_MAX_SAMPLE_FILES = 20
+_MAX_SAMPLE_FILES = 50
 
 
 class PatternAnalyzer:

@@ -50,11 +50,21 @@ def main(
 
 @app.command()
 def generate(
-    path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
-    output: Path | None = typer.Option(None, "-o", "--output", help="Output file path"),  # noqa: B008
-    preset: str = typer.Option("default", "-p", "--preset", help="Template preset"),  # noqa: B008
-    force: bool = typer.Option(False, "-f", "--force", help="Overwrite existing CLAUDE.md"),  # noqa: B008
-    quiet: bool = typer.Option(False, "-q", "--quiet", help="Suppress progress output"),  # noqa: B008
+    path: Path = typer.Argument(  # noqa: B008
+        Path("."), help="Path to project root"
+    ),
+    output: Path | None = typer.Option(  # noqa: B008
+        None, "-o", "--output", help="Output file path"
+    ),
+    preset: str = typer.Option(  # noqa: B008
+        "default", "-p", "--preset", help="Template preset"
+    ),
+    force: bool = typer.Option(  # noqa: B008
+        False, "-f", "--force", help="Overwrite existing CLAUDE.md"
+    ),
+    quiet: bool = typer.Option(  # noqa: B008
+        False, "-q", "--quiet", help="Suppress progress output"
+    ),
 ) -> None:
     """Generate a CLAUDE.md file for the target project."""
     try:
@@ -93,7 +103,7 @@ def generate(
                 task = progress.add_task("Composing CLAUDE.md...", total=None)
                 composer = DocumentComposer(config)
                 content = composer.compose(structure, analyses)
-                score = composer._estimate_quality_score(content)
+                score = composer.estimate_quality_score(content)
                 progress.update(task, description="Done")
         else:
             scanner = CodebaseScanner(config)
@@ -101,7 +111,7 @@ def generate(
             analyses = run_all(structure, config)
             composer = DocumentComposer(config)
             content = composer.compose(structure, analyses)
-            score = composer._estimate_quality_score(content)
+            score = composer.estimate_quality_score(content)
 
         out_path.write_text(content)
 
@@ -130,8 +140,12 @@ def generate(
 
 @app.command()
 def audit(
-    path: Path = typer.Argument(..., help="Path to existing CLAUDE.md file"),  # noqa: B008
-    verbose: bool = typer.Option(False, "-v", "--verbose", help="Show detailed findings"),  # noqa: B008
+    path: Path = typer.Argument(  # noqa: B008
+        ..., help="Path to existing CLAUDE.md file"
+    ),
+    verbose: bool = typer.Option(  # noqa: B008
+        False, "-v", "--verbose", help="Show detailed findings"
+    ),
 ) -> None:
     """Audit an existing CLAUDE.md file for gaps and improvements."""
     try:
