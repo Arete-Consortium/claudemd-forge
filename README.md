@@ -130,7 +130,7 @@ Forge scores your CLAUDE.md on:
 
 ```bash
 # Clone and install
-git clone https://github.com/AreteDriver/claudemd-forge.git
+git clone https://github.com/Arete-Consortium/claudemd-forge.git
 cd claudemd-forge
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"

@@ -84,7 +84,7 @@ _GITHUB_ACTION_TEMPLATE = dedent("""\
                   '```',
                   '',
                   '---',
-                  '*Powered by [claudemd-forge](https://github.com/AreteDriver/claudemd-forge)*',
+                  '*Powered by [claudemd-forge](https://github.com/Arete-Consortium/claudemd-forge)*',
                 ].join('\\n');
 
                 await github.rest.issues.createComment({

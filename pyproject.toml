@@ -43,9 +43,9 @@ dev = [
 claudemd-forge = "claudemd_forge.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/AreteDriver/claudemd-forge"
-Repository = "https://github.com/AreteDriver/claudemd-forge"
-Issues = "https://github.com/AreteDriver/claudemd-forge/issues"
+Homepage = "https://github.com/Arete-Consortium/claudemd-forge"
+Repository = "https://github.com/Arete-Consortium/claudemd-forge"
+Issues = "https://github.com/Arete-Consortium/claudemd-forge/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
