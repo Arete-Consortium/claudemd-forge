@@ -86,6 +86,30 @@ my-api — TODO: Add project description.
 ...
 ```
 
+## GitHub Action
+
+Add automated CLAUDE.md auditing to your CI pipeline:
+
+```yaml
+# .github/workflows/claudemd-audit.yml
+name: Audit CLAUDE.md
+on: [pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: Arete-Consortium/claudemd-forge@v0.1.0
+        with:
+          fail-below: 40     # Minimum passing score (0-100)
+          comment: true       # Post results as PR comment
+```
+
+The action posts a formatted comment on your PR with score, findings, and recommendations.
+
 ## Free vs Pro
 
 | Feature | Free | Pro ($8/mo) |

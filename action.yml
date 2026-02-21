@@ -1,0 +1,175 @@
+name: "ClaudeMD Forge Audit"
+description: "Audit your CLAUDE.md for quality, accuracy, and completeness"
+author: "Arete-Consortium"
+
+branding:
+  icon: "file-text"
+  color: "purple"
+
+inputs:
+  path:
+    description: "Path to CLAUDE.md file"
+    required: false
+    default: "CLAUDE.md"
+  fail-below:
+    description: "Minimum score to pass (0-100). Exit code 2 if score is below this."
+    required: false
+    default: "40"
+  comment:
+    description: "Post audit results as a PR comment (true/false)"
+    required: false
+    default: "true"
+  version:
+    description: "claudemd-forge version to install"
+    required: false
+    default: "latest"
+
+outputs:
+  score:
+    description: "Audit score (0-100)"
+    value: ${{ steps.audit.outputs.score }}
+  passed:
+    description: "Whether the audit passed the threshold"
+    value: ${{ steps.audit.outputs.passed }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install claudemd-forge
+      shell: bash
+      run: |
+        if [ "${{ inputs.version }}" = "latest" ]; then
+          pip install claudemd-forge --quiet
+        else
+          pip install "claudemd-forge==${{ inputs.version }}" --quiet
+        fi
+
+    - name: Run audit
+      id: audit
+      shell: bash
+      run: |
+        set +e
+        RESULT=$(claudemd-forge audit "${{ inputs.path }}" --json --fail-below "${{ inputs.fail-below }}" 2>&1)
+        EXIT_CODE=$?
+        set -e
+
+        echo "$RESULT" > /tmp/audit-result.json
+
+        SCORE=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('score', -1))" 2>/dev/null || echo "-1")
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+
+        if [ "$EXIT_CODE" -eq 0 ]; then
+          echo "passed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "passed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+
+    - name: Format PR comment
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      id: format
+      shell: bash
+      run: |
+        python3 << 'PYEOF'
+        import json, os
+
+        with open("/tmp/audit-result.json") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = {"error": "Failed to parse audit results"}
+
+        if "error" in data:
+            body = f"## ClaudeMD Forge Audit\n\n:x: **Error:** {data['error']}\n"
+        else:
+            score = data["score"]
+            if score >= 70:
+                icon = ":white_check_mark:"
+                grade = "Pass"
+            elif score >= 40:
+                icon = ":warning:"
+                grade = "Needs Improvement"
+            else:
+                icon = ":x:"
+                grade = "Failing"
+
+            body = f"## ClaudeMD Forge Audit\n\n{icon} **Score: {score}/100** ({grade})\n"
+
+            findings = data.get("findings", [])
+            errors = [f for f in findings if f["severity"] == "error"]
+            warnings = [f for f in findings if f["severity"] == "warning"]
+            infos = [f for f in findings if f["severity"] == "info"]
+
+            if errors or warnings:
+                body += "\n### Findings\n\n"
+                body += "| Severity | Category | Message |\n"
+                body += "|----------|----------|---------|\n"
+                for f in errors:
+                    body += f"| :red_circle: ERROR | {f['category']} | {f['message']} |\n"
+                for f in warnings:
+                    body += f"| :yellow_circle: WARNING | {f['category']} | {f['message']} |\n"
+                for f in infos[:3]:
+                    body += f"| :blue_circle: INFO | {f['category']} | {f['message']} |\n"
+                if len(infos) > 3:
+                    body += f"\n*...and {len(infos) - 3} more info findings*\n"
+
+            missing = data.get("missing_sections", [])
+            if missing:
+                body += f"\n**Missing sections:** {', '.join(missing)}\n"
+
+            recs = data.get("recommendations", [])
+            if recs:
+                body += "\n### Recommendations\n\n"
+                for r in recs:
+                    body += f"- {r}\n"
+
+            body += "\n---\n*Audited by [ClaudeMD Forge](https://github.com/Arete-Consortium/claudemd-forge)*"
+
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write("body<<COMMENT_EOF\n")
+            f.write(body)
+            f.write("\nCOMMENT_EOF\n")
+        PYEOF
+
+    - name: Post PR comment
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const body = process.env.COMMENT_BODY;
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          const existing = comments.find(c =>
+            c.user.type === 'Bot' && c.body.includes('ClaudeMD Forge Audit')
+          );
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }
+      env:
+        COMMENT_BODY: ${{ steps.format.outputs.body }}
+
+    - name: Fail if below threshold
+      if: steps.audit.outputs.exit_code != '0'
+      shell: bash
+      run: exit ${{ steps.audit.outputs.exit_code }}

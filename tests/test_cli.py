@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -77,6 +78,44 @@ class TestAudit:
         result = runner.invoke(app, ["audit", str(tmp_project / "CLAUDE.md"), "-v"])
         # With verbose, should show suggestions.
         assert "Score" in result.output
+
+    def test_audit_json_output(self, tmp_project: Path) -> None:
+        (tmp_project / "CLAUDE.md").write_text("# CLAUDE.md\n\nJust a title.\n")
+        result = runner.invoke(app, ["audit", str(tmp_project / "CLAUDE.md"), "--json"])
+        data = json.loads(result.output)
+        assert "score" in data
+        assert "findings" in data
+        assert "missing_sections" in data
+        assert "recommendations" in data
+        assert isinstance(data["score"], int)
+        assert isinstance(data["findings"], list)
+
+    def test_audit_json_missing_file(self, tmp_path: Path) -> None:
+        result = runner.invoke(app, ["audit", str(tmp_path / "CLAUDE.md"), "--json"])
+        assert result.exit_code == 1
+        data = json.loads(result.output)
+        assert "error" in data
+
+    def test_audit_json_findings_have_fields(self, tmp_project: Path) -> None:
+        (tmp_project / "CLAUDE.md").write_text("# CLAUDE.md\n")
+        result = runner.invoke(app, ["audit", str(tmp_project / "CLAUDE.md"), "--json"])
+        data = json.loads(result.output)
+        if data["findings"]:
+            finding = data["findings"][0]
+            assert "severity" in finding
+            assert "category" in finding
+            assert "message" in finding
+
+    def test_audit_fail_below_custom_threshold(self, tmp_project: Path) -> None:
+        (tmp_project / "CLAUDE.md").write_text("# CLAUDE.md\n\nJust a title.\n")
+        # Default threshold is 40; set it to 80 so a minimal file fails
+        result = runner.invoke(app, ["audit", str(tmp_project / "CLAUDE.md"), "--fail-below", "80"])
+        assert result.exit_code == 2
+
+    def test_audit_fail_below_zero_always_passes(self, tmp_project: Path) -> None:
+        (tmp_project / "CLAUDE.md").write_text("# CLAUDE.md\n")
+        result = runner.invoke(app, ["audit", str(tmp_project / "CLAUDE.md"), "--fail-below", "0"])
+        assert result.exit_code == 0
 
 
 class TestPresets:

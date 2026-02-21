@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import json
 from pathlib import Path
 
 import typer
@@ -145,12 +146,21 @@ def audit(
     verbose: bool = typer.Option(  # noqa: B008
         False, "-v", "--verbose", help="Show detailed findings"
     ),
+    output_json: bool = typer.Option(  # noqa: B008
+        False, "--json", help="Output results as JSON"
+    ),
+    fail_below: int = typer.Option(  # noqa: B008
+        40, "--fail-below", help="Exit with code 2 if score is below this threshold"
+    ),
 ) -> None:
     """Audit an existing CLAUDE.md file for gaps and improvements."""
     try:
         target = path.resolve()
         if not target.is_file():
-            console.print(f"[red]Error:[/red] {target} is not a file.")
+            if output_json:
+                print(json.dumps({"error": f"{target} is not a file"}))  # noqa: T201
+            else:
+                console.print(f"[red]Error:[/red] {target} is not a file.")
             raise typer.Exit(1)
 
         claude_content = target.read_text()
@@ -167,45 +177,63 @@ def audit(
         auditor = ClaudeMdAuditor(config)
         report = auditor.audit(claude_content, structure, analyses)
 
-        # Display findings.
-        if report.findings:
-            table = Table(title="Audit Findings")
-            table.add_column("Severity", style="bold")
-            table.add_column("Category")
-            table.add_column("Message")
-
-            severity_styles = {"error": "red", "warning": "yellow", "info": "blue"}
-
-            for finding in report.findings:
-                style = severity_styles.get(finding.severity, "white")
-                table.add_row(
-                    f"[{style}]{finding.severity.upper()}[/{style}]",
-                    finding.category,
-                    finding.message,
+        if output_json:
+            print(  # noqa: T201
+                json.dumps(
+                    {
+                        "score": report.score,
+                        "findings": [f.model_dump() for f in report.findings],
+                        "missing_sections": report.missing_sections,
+                        "recommendations": report.recommendations,
+                    },
+                    indent=2,
                 )
-                if verbose and finding.suggestion:
-                    table.add_row("", "", f"  -> {finding.suggestion}")
+            )
+        else:
+            # Display findings.
+            if report.findings:
+                table = Table(title="Audit Findings")
+                table.add_column("Severity", style="bold")
+                table.add_column("Category")
+                table.add_column("Message")
 
-            console.print(table)
+                severity_styles = {"error": "red", "warning": "yellow", "info": "blue"}
 
-        if report.missing_sections:
-            missing = ", ".join(report.missing_sections)
-            console.print(f"\n[yellow]Missing sections:[/yellow] {missing}")
+                for finding in report.findings:
+                    style = severity_styles.get(finding.severity, "white")
+                    table.add_row(
+                        f"[{style}]{finding.severity.upper()}[/{style}]",
+                        finding.category,
+                        finding.message,
+                    )
+                    if verbose and finding.suggestion:
+                        table.add_row("", "", f"  -> {finding.suggestion}")
 
-        # Score display.
-        score_color = "green" if report.score >= 70 else "yellow" if report.score >= 40 else "red"
-        console.print(f"\n[{score_color}]Score: {report.score}/100[/{score_color}]")
+                console.print(table)
 
-        if report.recommendations:
-            console.print("\n[bold]Recommendations:[/bold]")
-            for rec in report.recommendations:
-                console.print(f"  - {rec}")
+            if report.missing_sections:
+                missing = ", ".join(report.missing_sections)
+                console.print(f"\n[yellow]Missing sections:[/yellow] {missing}")
 
-        if report.score < 40:
+            # Score display.
+            score_color = (
+                "green" if report.score >= 70 else "yellow" if report.score >= 40 else "red"
+            )
+            console.print(f"\n[{score_color}]Score: {report.score}/100[/{score_color}]")
+
+            if report.recommendations:
+                console.print("\n[bold]Recommendations:[/bold]")
+                for rec in report.recommendations:
+                    console.print(f"  - {rec}")
+
+        if report.score < fail_below:
             raise typer.Exit(2)
 
     except ForgeError as e:
-        console.print(Panel(str(e), title="Error", border_style="red"))
+        if output_json:
+            print(json.dumps({"error": str(e)}))  # noqa: T201
+        else:
+            console.print(Panel(str(e), title="Error", border_style="red"))
         raise typer.Exit(1) from e
 
 
