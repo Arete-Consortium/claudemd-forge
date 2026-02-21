@@ -153,7 +153,7 @@ def _validate_key_format(key: str) -> bool:
     if len(parts) != 4:
         return False
     for part in parts[1:]:
-        if len(part) != 4 or not part.isalnum() or not part.isupper():
+        if len(part) != 4 or not part.isalnum() or part != part.upper():
             return False
     return True
 

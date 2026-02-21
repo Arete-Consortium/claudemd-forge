@@ -42,19 +42,24 @@ runs:
 
     - name: Install claudemd-forge
       shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
       run: |
-        if [ "${{ inputs.version }}" = "latest" ]; then
+        if [ "$INPUT_VERSION" = "latest" ]; then
           pip install claudemd-forge --quiet
         else
-          pip install "claudemd-forge==${{ inputs.version }}" --quiet
+          pip install "claudemd-forge==$INPUT_VERSION" --quiet
         fi
 
     - name: Run audit
       id: audit
       shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_FAIL_BELOW: ${{ inputs.fail-below }}
       run: |
         set +e
-        RESULT=$(claudemd-forge audit "${{ inputs.path }}" --json --fail-below "${{ inputs.fail-below }}" 2>&1)
+        RESULT=$(claudemd-forge audit "$INPUT_PATH" --json --fail-below "$INPUT_FAIL_BELOW" 2>&1)
         EXIT_CODE=$?
         set -e
 
@@ -172,4 +177,6 @@ runs:
     - name: Fail if below threshold
       if: steps.audit.outputs.exit_code != '0'
       shell: bash
-      run: exit ${{ steps.audit.outputs.exit_code }}
+      env:
+        AUDIT_EXIT_CODE: ${{ steps.audit.outputs.exit_code }}
+      run: exit "$AUDIT_EXIT_CODE"

@@ -8,17 +8,14 @@ Usage:
 """
 
 import argparse
-import hashlib
 import secrets
 import sys
+from pathlib import Path
 
-_KEY_SALT = "claudemd-forge-v1"
+# Add src/ to path so we can import the canonical salt and checksum function.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-
-def _compute_check_segment(body: str) -> str:
-    """Derive the check segment from key body (must match licensing.py)."""
-    digest = hashlib.sha256(f"{_KEY_SALT}:{body}".encode()).hexdigest()
-    return digest[:4].upper()
+from claudemd_forge.licensing import _compute_check_segment  # noqa: E402
 
 
 def generate_key() -> str:
