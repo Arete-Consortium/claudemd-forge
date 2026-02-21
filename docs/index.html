@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudeMD Forge — CLAUDE.md Generator for AI Coding Agents</title>
+    <meta name="description" content="Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Windsurf, and Codex actually understand your project.">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #141414;
+            --border: #262626;
+            --text: #e5e5e5;
+            --text-dim: #a3a3a3;
+            --accent: #a78bfa;
+            --accent-dim: #7c3aed;
+            --green: #4ade80;
+            --yellow: #fbbf24;
+            --red: #f87171;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+        /* Hero */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, var(--accent), #c4b5fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero .tagline {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            max-width: 600px;
+            margin: 0 auto 32px;
+        }
+        .hero .install {
+            display: inline-block;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 1rem;
+            color: var(--green);
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .hero .install:hover { border-color: var(--accent); }
+        .hero .install::before { content: '$ '; color: var(--text-dim); }
+        .badges {
+            margin-top: 24px;
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .badges img { height: 20px; }
+
+        /* Features */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            padding: 40px 0;
+        }
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .feature h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+        .feature p { color: var(--text-dim); font-size: 0.95rem; }
+
+        /* Demo */
+        .demo {
+            padding: 40px 0;
+        }
+        .demo h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .terminal {
+            background: #1a1a2e;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .terminal-header {
+            background: #16162a;
+            padding: 8px 16px;
+            display: flex;
+            gap: 8px;
+        }
+        .terminal-dot {
+            width: 12px; height: 12px;
+            border-radius: 50%;
+        }
+        .terminal-dot.red { background: #ff5f56; }
+        .terminal-dot.yellow { background: #ffbd2e; }
+        .terminal-dot.green { background: #27c93f; }
+        .terminal-body {
+            padding: 20px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            overflow-x: auto;
+        }
+        .terminal-body .prompt { color: var(--green); }
+        .terminal-body .cmd { color: #e5e5e5; }
+        .terminal-body .comment { color: #6b7280; }
+        .terminal-body .output { color: var(--text-dim); }
+        .terminal-body .score-good { color: var(--green); }
+        .terminal-body .score-warn { color: var(--yellow); }
+        .terminal-body .section { color: var(--accent); }
+
+        /* Pricing */
+        .pricing {
+            padding: 60px 0;
+        }
+        .pricing h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        .pricing-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 32px;
+        }
+        .pricing-card.pro {
+            border-color: var(--accent-dim);
+        }
+        .pricing-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 4px;
+        }
+        .pricing-card .price {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .pricing-card .price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-dim);
+        }
+        .pricing-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .pricing-card li {
+            padding: 6px 0;
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+        .pricing-card li::before {
+            content: '';
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .pricing-card li.yes::before {
+            content: '';
+            background: var(--green);
+            mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z'/%3E%3C/svg%3E") no-repeat center;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z'/%3E%3C/svg%3E") no-repeat center;
+        }
+        .pricing-card li.no::before {
+            content: '';
+            background: #525252;
+            mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z'/%3E%3C/svg%3E") no-repeat center;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z'/%3E%3C/svg%3E") no-repeat center;
+            -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z'/%3E%3C/svg%3E") no-repeat center;
+        }
+
+        /* CI Section */
+        .ci-section {
+            padding: 40px 0;
+        }
+        .ci-section h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .ci-section .subtitle {
+            text-align: center;
+            color: var(--text-dim);
+            margin-bottom: 24px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+        footer a { color: var(--accent); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 2rem; }
+            .pricing-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero -->
+        <section class="hero">
+            <h1>ClaudeMD Forge</h1>
+            <p class="tagline">Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Windsurf, and Codex actually understand your project.</p>
+            <div class="install" onclick="navigator.clipboard.writeText('pip install claudemd-forge')" title="Click to copy">pip install claudemd-forge</div>
+            <div class="badges">
+                <img src="https://img.shields.io/pypi/v/claudemd-forge?color=7c3aed" alt="PyPI">
+                <img src="https://img.shields.io/pypi/pyversions/claudemd-forge" alt="Python">
+                <img src="https://img.shields.io/github/license/Arete-Consortium/claudemd-forge" alt="License">
+                <img src="https://img.shields.io/github/actions/workflow/status/Arete-Consortium/claudemd-forge/ci.yml?label=tests" alt="Tests">
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="features">
+            <div class="feature">
+                <h3>Generate</h3>
+                <p>Scan your codebase and produce a complete CLAUDE.md with coding standards, commands, anti-patterns, and architecture — in one command.</p>
+            </div>
+            <div class="feature">
+                <h3>Audit</h3>
+                <p>Score an existing CLAUDE.md against 5 quality dimensions: coverage, accuracy, specificity, anti-patterns, and freshness.</p>
+            </div>
+            <div class="feature">
+                <h3>CI/CD</h3>
+                <p>GitHub Action runs audit on every PR. Posts a formatted comment with score, findings, and recommendations. Fail builds below your threshold.</p>
+            </div>
+            <div class="feature">
+                <h3>Framework-Aware</h3>
+                <p>11 presets for FastAPI, React, Next.js, Django, Rust, Go, Express, and more. Each preset knows the conventions and anti-patterns of its ecosystem.</p>
+            </div>
+        </section>
+
+        <!-- Demo -->
+        <section class="demo">
+            <h2>See It Work</h2>
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-body">
+<span class="prompt">$</span> <span class="cmd">claudemd-forge generate . --quiet</span>
+<br><br>
+<span class="prompt">$</span> <span class="cmd">claudemd-forge audit CLAUDE.md</span>
+<br><br>
+<span class="section">Audit Findings</span>
+<br>
+<span class="output">  WARNING  coverage      Missing "Architecture" section</span>
+<br>
+<span class="output">  INFO     specificity   "follow best practices" is too vague</span>
+<br>
+<span class="output">  INFO     freshness     Reference to nonexistent file: src/old_module.py</span>
+<br><br>
+<span class="score-good">Score: 72/100</span>
+<br><br>
+<span class="output">Recommendations:</span>
+<br>
+<span class="output">  - Add Architecture section with directory tree</span>
+<br>
+<span class="output">  - Replace vague guidance with specific rules</span>
+<br>
+<span class="output">  - Remove stale file references</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- CI Section -->
+        <section class="ci-section">
+            <h2>GitHub Action</h2>
+            <p class="subtitle">Audit CLAUDE.md on every pull request. No config beyond the workflow file.</p>
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-body">
+<span class="comment"># .github/workflows/claudemd-audit.yml</span>
+<br>
+<span class="section">name:</span> <span class="output">Audit CLAUDE.md</span>
+<br>
+<span class="section">on:</span> <span class="output">[pull_request]</span>
+<br><br>
+<span class="section">jobs:</span>
+<br>
+<span class="output">  audit:</span>
+<br>
+<span class="output">    runs-on: ubuntu-latest</span>
+<br>
+<span class="output">    permissions:</span>
+<br>
+<span class="output">      pull-requests: write</span>
+<br>
+<span class="output">    steps:</span>
+<br>
+<span class="output">      - uses: actions/checkout@v6</span>
+<br>
+<span class="output">      - uses: Arete-Consortium/claudemd-forge@v0.2.0</span>
+<br>
+<span class="output">        with:</span>
+<br>
+<span class="output">          fail-below: 40</span>
+<br>
+<span class="output">          comment: true</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing -->
+        <section class="pricing">
+            <h2>Pricing</h2>
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <h3>Free</h3>
+                    <div class="price">$0</div>
+                    <ul>
+                        <li class="yes">Generate CLAUDE.md from any codebase</li>
+                        <li class="yes">Audit with 5-dimension scoring</li>
+                        <li class="yes">11 community framework presets</li>
+                        <li class="yes">JSON output for scripting</li>
+                        <li class="yes">GitHub Action with PR comments</li>
+                        <li class="no">Interactive guided setup</li>
+                        <li class="no">Drift detection</li>
+                        <li class="no">Premium presets</li>
+                    </ul>
+                </div>
+                <div class="pricing-card pro">
+                    <h3>Pro</h3>
+                    <div class="price">$8<span>/mo</span></div>
+                    <ul>
+                        <li class="yes">Everything in Free</li>
+                        <li class="yes">Interactive guided setup</li>
+                        <li class="yes">Drift detection (diff command)</li>
+                        <li class="yes">6 premium presets</li>
+                        <li class="yes">Team templates (coming soon)</li>
+                        <li class="yes">Priority support</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <p>
+                <a href="https://github.com/Arete-Consortium/claudemd-forge">GitHub</a> &middot;
+                <a href="https://pypi.org/project/claudemd-forge/">PyPI</a> &middot;
+                <a href="https://github.com/Arete-Consortium/claudemd-forge/issues">Issues</a>
+            </p>
+            <p style="margin-top: 8px;">Built by <a href="https://github.com/AreteDriver">AreteDriver</a> &middot; MIT License</p>
+        </footer>
+    </div>
+</body>
+</html>
