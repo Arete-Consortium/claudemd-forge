@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import json
 import os
+import time
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from claudemd_forge.licensing import (
     PRO_FEATURES,
     PRO_PRESETS,
     TIER_DEFINITIONS,
+    LicenseInfo,
     Tier,
     _compute_check_segment,
+    _load_cache,
+    _load_cache_expired,
+    _save_cache,
     _validate_key_checksum,
     _validate_key_format,
+    _validate_with_server,
     get_license_info,
     get_upgrade_message,
     has_feature,
@@ -282,3 +289,264 @@ class TestProFeatureConstants:
         pro_features = set(TIER_DEFINITIONS[Tier.PRO].features)
         exclusive = pro_features - free_features
         assert exclusive == PRO_FEATURES
+
+
+# --- Server validation tests ---
+
+_VALID_KEY = "CMDF-ABCD-EFGH-54EF"
+
+
+class TestValidateWithServer:
+    def test_no_server_url_returns_none(self) -> None:
+        with patch("claudemd_forge.licensing._get_license_server_url", return_value=None):
+            result = _validate_with_server(_VALID_KEY)
+            assert result is None
+
+    def test_httpx_not_installed_returns_none(self) -> None:
+        with (
+            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch.dict("sys.modules", {"httpx": None}),
+        ):
+            result = _validate_with_server(_VALID_KEY)
+            assert result is None
+
+    def test_server_success_returns_info(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "valid": True,
+            "tier": "pro",
+            "email": "test@test.com",
+            "metadata": {},
+        }
+        mock_httpx = MagicMock()
+        mock_httpx.post.return_value = mock_resp
+
+        with (
+            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch.dict("sys.modules", {"httpx": mock_httpx}),
+        ):
+            result = _validate_with_server(_VALID_KEY)
+            assert result is not None
+            assert result.tier == Tier.PRO
+            assert result.valid is True
+            assert result.email == "test@test.com"
+
+    def test_server_invalid_key(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"valid": False, "tier": "free"}
+        mock_httpx = MagicMock()
+        mock_httpx.post.return_value = mock_resp
+
+        with (
+            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch.dict("sys.modules", {"httpx": mock_httpx}),
+        ):
+            result = _validate_with_server(_VALID_KEY)
+            assert result is not None
+            assert result.tier == Tier.FREE
+            assert result.valid is False
+
+    def test_server_error_returns_none(self) -> None:
+        mock_httpx = MagicMock()
+        mock_httpx.post.side_effect = ConnectionError("refused")
+
+        with (
+            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch.dict("sys.modules", {"httpx": mock_httpx}),
+        ):
+            result = _validate_with_server(_VALID_KEY)
+            assert result is None
+
+    def test_server_non_200_returns_none(self) -> None:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_httpx = MagicMock()
+        mock_httpx.post.return_value = mock_resp
+
+        with (
+            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch.dict("sys.modules", {"httpx": mock_httpx}),
+        ):
+            result = _validate_with_server(_VALID_KEY)
+            assert result is None
+
+
+class TestCache:
+    def test_save_and_load(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        info = LicenseInfo(tier=Tier.PRO, license_key=_VALID_KEY, valid=True, email="t@t.com")
+
+        with (
+            patch("claudemd_forge.licensing._CACHE_DIR", tmp_path),
+            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+        ):
+            _save_cache(_VALID_KEY, info)
+            assert cache_file.exists()
+
+            loaded = _load_cache(_VALID_KEY)
+            assert loaded is not None
+            assert loaded.tier == Tier.PRO
+            assert loaded.valid is True
+
+    def test_cache_expired_returns_none(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": _VALID_KEY,
+            "tier": "pro",
+            "valid": True,
+            "email": None,
+            "metadata": {},
+            "cached_at": time.time() - 100000,  # way past TTL
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+            result = _load_cache(_VALID_KEY)
+            assert result is None
+
+    def test_cache_wrong_key_returns_none(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": "CMDF-XXXX-YYYY-ZZZZ",
+            "tier": "pro",
+            "valid": True,
+            "cached_at": time.time(),
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+            result = _load_cache(_VALID_KEY)
+            assert result is None
+
+    def test_corrupt_cache_returns_none(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        cache_file.write_text("not json at all {{{")
+
+        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+            result = _load_cache(_VALID_KEY)
+            assert result is None
+
+    def test_no_cache_file_returns_none(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "nonexistent.json"
+
+        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+            result = _load_cache(_VALID_KEY)
+            assert result is None
+
+    def test_load_expired_ignores_ttl(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": _VALID_KEY,
+            "tier": "pro",
+            "valid": True,
+            "email": "t@t.com",
+            "metadata": {},
+            "cached_at": time.time() - 100000,
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+            result = _load_cache_expired(_VALID_KEY)
+            assert result is not None
+            assert result.tier == Tier.PRO
+            assert result.metadata.get("degraded") is True
+
+    def test_save_creates_dir(self, tmp_path: Path) -> None:
+        cache_dir = tmp_path / "nested" / "dir"
+        cache_file = cache_dir / "cache.json"
+        info = LicenseInfo(tier=Tier.PRO, valid=True)
+
+        with (
+            patch("claudemd_forge.licensing._CACHE_DIR", cache_dir),
+            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+        ):
+            _save_cache(_VALID_KEY, info)
+            assert cache_dir.exists()
+
+    def test_save_sets_permissions(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        info = LicenseInfo(tier=Tier.PRO, valid=True)
+
+        with (
+            patch("claudemd_forge.licensing._CACHE_DIR", tmp_path),
+            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+        ):
+            _save_cache(_VALID_KEY, info)
+            mode = cache_file.stat().st_mode
+            assert mode & 0o777 == 0o600
+
+
+class TestServerValidationPipeline:
+    """Test the full get_license_info() flow with server integration."""
+
+    def test_fresh_cache_hit_skips_server(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": _VALID_KEY,
+            "tier": "pro",
+            "valid": True,
+            "email": "cached@t.com",
+            "metadata": {},
+            "cached_at": time.time(),
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with (
+            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+            patch("claudemd_forge.licensing._validate_with_server") as mock_server,
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.email == "cached@t.com"
+            mock_server.assert_not_called()
+
+    def test_server_result_cached(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        server_info = LicenseInfo(
+            tier=Tier.PRO, license_key=_VALID_KEY, valid=True, email="server@t.com"
+        )
+
+        with (
+            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+            patch("claudemd_forge.licensing._CACHE_DIR", tmp_path),
+            patch("claudemd_forge.licensing._validate_with_server", return_value=server_info),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert cache_file.exists()
+
+    def test_server_down_uses_expired_cache(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": _VALID_KEY,
+            "tier": "pro",
+            "valid": True,
+            "email": "expired@t.com",
+            "metadata": {},
+            "cached_at": time.time() - 100000,
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with (
+            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+            patch("claudemd_forge.licensing._validate_with_server", return_value=None),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.metadata.get("degraded") is True
+
+    def test_no_server_no_cache_falls_back_to_local(self) -> None:
+        with (
+            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("claudemd_forge.licensing._load_cache", return_value=None),
+            patch("claudemd_forge.licensing._validate_with_server", return_value=None),
+            patch("claudemd_forge.licensing._load_cache_expired", return_value=None),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.valid is True

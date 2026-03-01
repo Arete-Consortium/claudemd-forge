@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
+import stat
+import time
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -24,6 +27,13 @@ _LICENSE_LOCATIONS: list[str] = [
 ]
 
 _ENV_LICENSE_KEY = "CLAUDEMD_FORGE_LICENSE"
+_ENV_LICENSE_SERVER = "CLAUDEMD_FORGE_LICENSE_SERVER"
+
+# Cache settings.
+_CACHE_DIR = Path("~/.claudemd_forge").expanduser()
+_CACHE_FILE = _CACHE_DIR / "license_cache.json"
+_CACHE_TTL_SECONDS = 86400  # 24 hours
+_SERVER_TIMEOUT_SECONDS = 5
 
 
 class Tier(StrEnum):
@@ -204,11 +214,127 @@ def _find_license_key() -> str | None:
     return None
 
 
+def _get_license_server_url() -> str | None:
+    """Return the configured license server URL, or None if unset."""
+    return os.environ.get(_ENV_LICENSE_SERVER)
+
+
+def _validate_with_server(key: str) -> LicenseInfo | None:
+    """Call the license server to validate a key.
+
+    Returns LicenseInfo on success, None on any failure (network, timeout, no httpx).
+    httpx is lazy-imported so the server extra remains optional.
+    """
+    server_url = _get_license_server_url()
+    if not server_url:
+        return None
+
+    try:
+        import httpx  # noqa: F811
+    except ImportError:
+        logger.debug("httpx not installed — skipping server validation")
+        return None
+
+    try:
+        from claudemd_forge.machine_id import get_machine_id
+
+        machine_id = get_machine_id()
+    except Exception:
+        machine_id = None
+
+    try:
+        resp = httpx.post(
+            f"{server_url.rstrip('/')}/v1/validate",
+            json={"license_key": key, "machine_id": machine_id},
+            timeout=_SERVER_TIMEOUT_SECONDS,
+        )
+        if resp.status_code != 200:
+            logger.debug("Server returned %d", resp.status_code)
+            return None
+
+        data = resp.json()
+        tier = Tier.PRO if data.get("valid") else Tier.FREE
+        return LicenseInfo(
+            tier=tier,
+            license_key=key,
+            valid=data.get("valid", False),
+            email=data.get("email"),
+            metadata=data.get("metadata", {}),
+        )
+    except Exception:
+        logger.debug("Server validation failed", exc_info=True)
+        return None
+
+
+def _load_cache(key: str) -> LicenseInfo | None:
+    """Load cached license info if fresh (within TTL)."""
+    try:
+        if not _CACHE_FILE.is_file():
+            return None
+        data = json.loads(_CACHE_FILE.read_text())
+        if data.get("key") != key:
+            return None
+        cached_at = data.get("cached_at", 0)
+        if time.time() - cached_at > _CACHE_TTL_SECONDS:
+            return None
+        return LicenseInfo(
+            tier=Tier(data["tier"]),
+            license_key=key,
+            valid=data.get("valid", False),
+            email=data.get("email"),
+            metadata=data.get("metadata", {}),
+        )
+    except Exception:
+        return None
+
+
+def _load_cache_expired(key: str) -> LicenseInfo | None:
+    """Load cached license info ignoring TTL (degraded mode)."""
+    try:
+        if not _CACHE_FILE.is_file():
+            return None
+        data = json.loads(_CACHE_FILE.read_text())
+        if data.get("key") != key:
+            return None
+        info = LicenseInfo(
+            tier=Tier(data["tier"]),
+            license_key=key,
+            valid=data.get("valid", False),
+            email=data.get("email"),
+            metadata={**data.get("metadata", {}), "degraded": True},
+        )
+        return info
+    except Exception:
+        return None
+
+
+def _save_cache(key: str, info: LicenseInfo) -> None:
+    """Persist license info to disk with restrictive permissions."""
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "key": key,
+            "tier": str(info.tier),
+            "valid": info.valid,
+            "email": info.email,
+            "metadata": info.metadata,
+            "cached_at": time.time(),
+        }
+        _CACHE_FILE.write_text(json.dumps(payload))
+        _CACHE_FILE.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 0o600
+    except Exception:
+        logger.debug("Failed to save license cache", exc_info=True)
+
+
 def get_license_info() -> LicenseInfo:
     """Detect and validate the current license.
 
-    Checks environment variables and license files for a valid key.
-    Returns LicenseInfo with tier set based on key validity.
+    Validation pipeline:
+    1. Find key (env var / file) -> local format + checksum check
+    2. Check fresh cache -> return on hit
+    3. Call license server -> cache on success
+    4. Server down -> use expired cache with degraded flag
+    5. No cache available -> local-only validation (Pro if checksum passes)
     """
     key = _find_license_key()
 
@@ -232,8 +358,25 @@ def get_license_info() -> LicenseInfo:
             valid=False,
         )
 
-    # Valid format + checksum — activate Pro tier.
-    # In production, this would also verify against a license server.
+    # Step 2: Check fresh cache.
+    cached = _load_cache(key)
+    if cached is not None:
+        logger.debug("Using cached license info")
+        return cached
+
+    # Step 3: Call server.
+    server_info = _validate_with_server(key)
+    if server_info is not None:
+        _save_cache(key, server_info)
+        return server_info
+
+    # Step 4: Server down — try expired cache.
+    expired = _load_cache_expired(key)
+    if expired is not None:
+        logger.warning("License server unreachable, using cached license (degraded)")
+        return expired
+
+    # Step 5: Fall back to local-only validation.
     return LicenseInfo(
         tier=Tier.PRO,
         license_key=key,
