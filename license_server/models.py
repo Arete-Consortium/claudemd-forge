@@ -58,6 +58,21 @@ class ValidateResponse(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class RevokeRequest(BaseModel):
+    """Request body for POST /v1/revoke."""
+
+    license_key: str
+
+
+class RevokeResponse(BaseModel):
+    """Response for POST /v1/revoke."""
+
+    revoked: bool
+    license_key_masked: str
+    email: str | None = None
+    revoked_at: str
+
+
 class ErrorResponse(BaseModel):
     """Standard error envelope."""
 
