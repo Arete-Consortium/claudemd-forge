@@ -1,0 +1,66 @@
+"""FastAPI license server application."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+from license_server import __version__
+from license_server.database import close_connection, get_connection, run_migrations
+from license_server.models import ErrorResponse, HealthResponse
+from license_server.routes.activate import router as activate_router
+from license_server.routes.validate import router as validate_router
+
+_db_path_override = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Run migrations on startup, close DB on shutdown."""
+    conn = get_connection(_db_path_override)
+    run_migrations(conn)
+    yield
+    close_connection()
+
+
+app = FastAPI(
+    title="ClaudeMD Forge License Server",
+    version=__version__,
+    lifespan=lifespan,
+)
+
+app.include_router(activate_router)
+app.include_router(validate_router)
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Return structured errors instead of tracebacks."""
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            error="internal_error", detail="An unexpected error occurred"
+        ).model_dump(),
+    )
+
+
+@app.get("/v1/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    """Health check with database statistics."""
+    conn = get_connection(_db_path_override)
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM licenses").fetchone()[0]
+        active = conn.execute("SELECT COUNT(*) FROM licenses WHERE active = 1").fetchone()[0]
+    except Exception:
+        total = 0
+        active = 0
+
+    return HealthResponse(
+        status="ok",
+        version=__version__,
+        total_licenses=total,
+        active_licenses=active,
+    )
