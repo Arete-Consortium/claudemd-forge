@@ -21,7 +21,6 @@ from claudemd_forge.drift.storage import ensure_dirs, save_run
 runner = CliRunner()
 
 # Patch targets at the source module, not the lazy-import site.
-_STORAGE = "claudemd_forge.drift.storage"
 _LICENSING = "claudemd_forge.licensing._find_license_key"
 _ADAPTERS = "claudemd_forge.drift.adapters.get_adapter"
 
