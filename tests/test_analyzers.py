@@ -9,6 +9,7 @@ from claudemd_forge.analyzers.commands import CommandAnalyzer
 from claudemd_forge.analyzers.domain import DomainAnalyzer
 from claudemd_forge.analyzers.language import LanguageAnalyzer
 from claudemd_forge.analyzers.patterns import PatternAnalyzer
+from claudemd_forge.analyzers.skills import SkillsAnalyzer
 from claudemd_forge.models import ForgeConfig
 from claudemd_forge.scanner import CodebaseScanner
 
@@ -298,16 +299,16 @@ class TestDomainAnalyzer:
 
 
 class TestRegistry:
-    def test_run_all_returns_four_results(self, tmp_project: Path) -> None:
+    def test_run_all_returns_five_results(self, tmp_project: Path) -> None:
         structure, config = _scan(tmp_project)
         results = run_all(structure, config)
-        assert len(results) == 4
+        assert len(results) == 5
 
     def test_all_categories_present(self, tmp_project: Path) -> None:
         structure, config = _scan(tmp_project)
         results = run_all(structure, config)
         categories = {r.category for r in results}
-        assert categories == {"language", "patterns", "commands", "domain"}
+        assert categories == {"language", "patterns", "commands", "domain", "skills"}
 
     def test_all_valid_analysis_results(self, tmp_project: Path) -> None:
         structure, config = _scan(tmp_project)
@@ -315,3 +316,63 @@ class TestRegistry:
         for r in results:
             assert 0.0 <= r.confidence <= 1.0
             assert r.category
+
+
+class TestSkillsAnalyzer:
+    def test_returns_skills_category(self, tmp_project: Path) -> None:
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer().analyze(structure, config)
+        assert result.category == "skills"
+        assert 0.0 <= result.confidence <= 1.0
+
+    def test_detects_installed_skills(self, tmp_project: Path, tmp_path: Path) -> None:
+        skills_dir = tmp_path / "skills"
+        skills_dir.mkdir()
+        (skills_dir / "code-reviewer").mkdir()
+        (skills_dir / "code-reviewer" / "SKILL.md").write_text("---\nname: code-reviewer\n---")
+        (skills_dir / "composite-scorer").mkdir()
+        (skills_dir / "composite-scorer" / "SKILL.md").write_text("---\nname: composite-scorer\n---")
+
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer(skills_dir=skills_dir).analyze(structure, config)
+        installed = result.findings["installed_skills"]
+        assert "code-reviewer" in installed
+        assert "composite-scorer" in installed
+        assert result.findings["installed_count"] == 2
+
+    def test_empty_skills_dir(self, tmp_project: Path, tmp_path: Path) -> None:
+        skills_dir = tmp_path / "empty_skills"
+        skills_dir.mkdir()
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer(skills_dir=skills_dir).analyze(structure, config)
+        assert result.findings["installed_skills"] == []
+
+    def test_nonexistent_skills_dir(self, tmp_project: Path, tmp_path: Path) -> None:
+        skills_dir = tmp_path / "no_such_dir"
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer(skills_dir=skills_dir).analyze(structure, config)
+        assert result.findings["installed_skills"] == []
+
+    def test_detects_project_skills(self, tmp_project: Path, tmp_path: Path) -> None:
+        claude_dir = tmp_project / ".claude" / "commands"
+        claude_dir.mkdir(parents=True)
+        (claude_dir / "deploy.md").write_text("Deploy command")
+
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer(skills_dir=tmp_path / "none").analyze(structure, config)
+        assert "commands/deploy" in result.findings["project_skills"]
+
+    def test_recommends_bundles_for_fastapi(self, tmp_project: Path, tmp_path: Path) -> None:
+        (tmp_project / "pyproject.toml").write_text('[project]\nname="test"\n[tool.ruff]\n')
+        (tmp_project / "requirements.txt").write_text("fastapi\nuvicorn\n")
+
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer(skills_dir=tmp_path / "none").analyze(structure, config)
+        bundles = result.findings["recommended_bundles"]
+        assert "api-integration" in bundles or "full-stack-dev" in bundles
+
+    def test_section_content_includes_heading(self, tmp_project: Path) -> None:
+        structure, config = _scan(tmp_project)
+        result = SkillsAnalyzer().analyze(structure, config)
+        if result.section_content:
+            assert "## AI Skills" in result.section_content

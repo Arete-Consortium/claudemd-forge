@@ -116,6 +116,7 @@ SECTION_ORDER: list[str] = [
     "anti_patterns",
     "dependencies",
     "domain_context",
+    "skills",
     "git_conventions",
 ]
 

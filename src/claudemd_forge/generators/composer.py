@@ -51,6 +51,8 @@ class DocumentComposer:
             section_map["common_commands"] = self._gen.generate_commands(by_category["commands"])
         if "domain" in by_category:
             section_map["domain_context"] = self._gen.generate_domain_context(by_category["domain"])
+        if "skills" in by_category and by_category["skills"].section_content:
+            section_map["skills"] = by_category["skills"].section_content
 
         section_map["anti_patterns"] = self._gen.generate_anti_patterns(structure, analyses)
         section_map["dependencies"] = self._gen.generate_dependencies(analyses, structure)

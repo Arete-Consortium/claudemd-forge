@@ -6,6 +6,7 @@ from claudemd_forge.analyzers.commands import CommandAnalyzer
 from claudemd_forge.analyzers.domain import DomainAnalyzer
 from claudemd_forge.analyzers.language import LanguageAnalyzer
 from claudemd_forge.analyzers.patterns import PatternAnalyzer
+from claudemd_forge.analyzers.skills import SkillsAnalyzer
 from claudemd_forge.models import AnalysisResult, ForgeConfig, ProjectStructure
 
 ANALYZERS: list[type] = [
@@ -13,6 +14,7 @@ ANALYZERS: list[type] = [
     PatternAnalyzer,
     CommandAnalyzer,
     DomainAnalyzer,
+    SkillsAnalyzer,
 ]
 
 
