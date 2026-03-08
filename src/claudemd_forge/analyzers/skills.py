@@ -5,8 +5,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import yaml
-
 from claudemd_forge.models import AnalysisResult, ForgeConfig, ProjectStructure
 
 logger = logging.getLogger(__name__)
@@ -91,7 +89,6 @@ class SkillsAnalyzer:
     def _detect_frameworks(self, structure: ProjectStructure) -> list[str]:
         """Detect frameworks from project structure."""
         frameworks: list[str] = []
-        file_paths = {str(f.path) for f in structure.files}
         file_names = {Path(f.path).name for f in structure.files}
 
         from claudemd_forge.config import FRAMEWORK_INDICATORS
@@ -100,9 +97,7 @@ class SkillsAnalyzer:
             for indicator in indicators:
                 if ":" in indicator:
                     filename, search_term = indicator.split(":", 1)
-                    matching = [
-                        f for f in structure.files if Path(f.path).name == filename
-                    ]
+                    matching = [f for f in structure.files if Path(f.path).name == filename]
                     if matching:
                         try:
                             content = (structure.root / matching[0].path).read_text(
@@ -149,10 +144,7 @@ class SkillsAnalyzer:
         # Pattern-based recommendations.
         file_names = {Path(f.path).name for f in structure.files}
 
-        if any(
-            name in file_names
-            for name in ("ci.yml", "test.yml", ".github")
-        ) or any(
+        if any(name in file_names for name in ("ci.yml", "test.yml", ".github")) or any(
             str(f.path).startswith(".github/workflows") for f in structure.files
         ):
             for skill in PATTERN_SKILL_MAP.get("has_ci", []):
@@ -206,9 +198,9 @@ class SkillsAnalyzer:
             lines.append("")
 
         if recommended_bundles:
-            lines.append("**Recommended bundles**: " + ", ".join(
-                f"`{b}`" for b in recommended_bundles
-            ))
+            lines.append(
+                "**Recommended bundles**: " + ", ".join(f"`{b}`" for b in recommended_bundles)
+            )
             lines.append("")
 
         if recommended:
