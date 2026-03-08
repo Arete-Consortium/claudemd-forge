@@ -11,6 +11,7 @@ from rich.console import Console
 
 from claudemd_forge.exceptions import ForgeError
 from claudemd_forge.gates import require_pro
+from claudemd_forge.telemetry import track_command
 
 drift_app = typer.Typer(
     name="drift",
@@ -65,6 +66,7 @@ def init(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
     """Initialize drift detection with sample benchmarks."""
+    track_command("drift_init")
     try:
         from claudemd_forge.drift.storage import ensure_dirs, load_benchmarks
 
@@ -103,6 +105,7 @@ def run(
     ),
 ) -> None:
     """Run drift benchmarks against a model."""
+    track_command("drift_run")
     try:
         from claudemd_forge.drift.adapters import get_adapter
         from claudemd_forge.drift.models import DriftSeverity, RunRecord
@@ -182,6 +185,7 @@ def report(
     ),
 ) -> None:
     """Show the latest drift report."""
+    track_command("drift_report")
     try:
         from claudemd_forge.drift.reporter import (
             render_html_report,
@@ -229,6 +233,7 @@ def baseline(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
     """Set the latest run as the new baseline."""
+    track_command("drift_baseline")
     try:
         from claudemd_forge.drift.storage import load_history, save_baseline
 
@@ -255,6 +260,7 @@ def trend(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
     """Show score trend over time."""
+    track_command("drift_trend")
     try:
         from claudemd_forge.drift.storage import load_history
         from claudemd_forge.drift.trend import render_ascii_trend
@@ -280,6 +286,7 @@ def generate(
     ),
 ) -> None:
     """Generate benchmarks from a CLAUDE.md file. [Pro]"""
+    track_command("drift_generate")
     try:
         from claudemd_forge.drift.adapters import get_adapter
         from claudemd_forge.drift.generator import generate_benchmarks
@@ -317,6 +324,7 @@ def fix(
     ),
 ) -> None:
     """Suggest CLAUDE.md fixes for failing benchmarks. [Pro]"""
+    track_command("drift_fix")
     try:
         from claudemd_forge.drift.adapters import get_adapter
         from claudemd_forge.drift.fixer import suggest_fixes

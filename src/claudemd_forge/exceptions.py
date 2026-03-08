@@ -23,3 +23,7 @@ class LicenseError(ForgeError):
 
 class DriftError(ForgeError):
     """Raised when drift detection encounters an error."""
+
+
+class StoreError(ForgeError):
+    """Raised when a local data store operation fails."""

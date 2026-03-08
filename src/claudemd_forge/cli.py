@@ -25,6 +25,7 @@ from claudemd_forge.licensing import (
 )
 from claudemd_forge.models import ForgeConfig
 from claudemd_forge.scanner import CodebaseScanner
+from claudemd_forge.telemetry import track_command
 
 app = typer.Typer(
     name="claudemd-forge",
@@ -73,6 +74,7 @@ def generate(
     ),
 ) -> None:
     """Generate a CLAUDE.md file for the target project."""
+    track_command("generate")
     try:
         root = path.resolve()
         if not root.is_dir():
@@ -159,6 +161,7 @@ def audit(
     ),
 ) -> None:
     """Audit an existing CLAUDE.md file for gaps and improvements."""
+    track_command("audit")
     try:
         target = path.resolve()
         if not target.is_file():
@@ -248,6 +251,7 @@ def init(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
     """Initialize a CLAUDE.md with interactive prompts. [Pro]"""
+    track_command("init")
     try:
         root = path.resolve()
         if not root.is_dir():
@@ -289,6 +293,7 @@ def diff(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
 ) -> None:
     """Show what would change if CLAUDE.md were regenerated. [Pro]"""
+    track_command("diff")
     try:
         root = path.resolve()
         existing_path = root / "CLAUDE.md"
@@ -336,6 +341,7 @@ def diff(
 @app.command()
 def presets() -> None:
     """List available template presets."""
+    track_command("presets")
     from claudemd_forge.templates.presets import PRESET_PACKS
 
     info = get_license_info()
@@ -370,6 +376,7 @@ def presets() -> None:
 @app.command()
 def frameworks() -> None:
     """List available framework presets."""
+    track_command("frameworks")
     from claudemd_forge.templates.frameworks import (
         FRAMEWORK_PRESETS,
         PREMIUM_PRESETS,
@@ -416,6 +423,7 @@ def frameworks() -> None:
 @app.command()
 def status() -> None:
     """Show current license status and available features."""
+    track_command("status")
     info = get_license_info()
     tier_config = TIER_DEFINITIONS[info.tier]
 
@@ -449,3 +457,78 @@ def status() -> None:
         console.print(
             "\n[dim]Upgrade to Pro ($8/mo or $69/yr): https://claudemd-forge.dev/pro[/dim]"
         )
+
+
+@app.command()
+def stats(
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON"),  # noqa: B008
+) -> None:
+    """Show local usage telemetry (requires CLAUDEMD_FORGE_TELEMETRY=1)."""
+    track_command("stats")
+    from claudemd_forge.telemetry import TelemetryStore, _telemetry_dir, is_enabled
+
+    if not is_enabled():
+        console.print(
+            "[dim]Telemetry is disabled. "
+            "Set CLAUDEMD_FORGE_TELEMETRY=1 to enable local usage tracking.[/dim]"
+        )
+        return
+
+    db_file = _telemetry_dir() / "telemetry.db"
+    if not db_file.exists():
+        console.print("[dim]No telemetry data yet.[/dim]")
+        return
+
+    ts = TelemetryStore(db_file)
+    try:
+        commands = ts.get_command_counts()
+        pro_gates = ts.get_pro_gate_counts()
+        total = ts.get_total_events()
+        first = ts.get_first_event_time()
+        last = ts.get_last_event_time()
+        activity = ts.get_daily_activity()
+
+        if json_output:
+            data = {
+                "total_events": total,
+                "first_event": first,
+                "last_event": last,
+                "commands": commands,
+                "pro_gate_hits": pro_gates,
+                "daily_activity": [{"date": d, "count": c} for d, c in activity],
+            }
+            console.print(json.dumps(data, indent=2))
+        else:
+            overview = Table(title="Telemetry Overview")
+            overview.add_column("Metric", style="cyan")
+            overview.add_column("Value", style="green")
+            overview.add_row("Total Events", str(total))
+            overview.add_row("First Event", first or "n/a")
+            overview.add_row("Last Event", last or "n/a")
+            console.print(overview)
+
+            if commands:
+                cmd_table = Table(title="Command Usage")
+                cmd_table.add_column("Command", style="cyan")
+                cmd_table.add_column("Count", style="green", justify="right")
+                for name, count in commands.items():
+                    cmd_table.add_row(name, str(count))
+                console.print(cmd_table)
+
+            if pro_gates:
+                gate_table = Table(title="Pro Feature Gate Hits")
+                gate_table.add_column("Feature", style="cyan")
+                gate_table.add_column("Attempts", style="yellow", justify="right")
+                for name, count in pro_gates.items():
+                    gate_table.add_row(name, str(count))
+                console.print(gate_table)
+
+            if activity:
+                act_table = Table(title="Daily Activity (Last 7 Days)")
+                act_table.add_column("Date", style="cyan")
+                act_table.add_column("Events", style="green", justify="right")
+                for day, count in activity:
+                    act_table.add_row(day, str(count))
+                console.print(act_table)
+    finally:
+        ts.close()
