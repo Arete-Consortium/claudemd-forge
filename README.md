@@ -123,7 +123,9 @@ The action posts a formatted comment on your PR with score, findings, and recomm
 | 6 premium presets (monorepo, data-science, devops...) | - | Yes |
 | Team templates (shared org standards) | - | Planned |
 
-**Activate Pro:**
+**Get Pro:** [Monthly ($8/mo)](https://buy.stripe.com/dRm6oH0KD64P9xq13VgrS00) | [Yearly ($69/yr)](https://buy.stripe.com/00w00j64X2SDaBu5kbgrS01)
+
+**Activate:**
 ```bash
 export CLAUDEMD_FORGE_LICENSE=CMDF-XXXX-XXXX-XXXX
 ```
