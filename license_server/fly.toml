@@ -6,6 +6,9 @@ primary_region = 'sjc'
 
 [env]
   CMDF_DB_PATH = "/data/license_server.db"
+  # Litestream secrets (set via `fly secrets set`):
+  # LITESTREAM_REPLICA_BUCKET, LITESTREAM_REPLICA_ENDPOINT,
+  # LITESTREAM_ACCESS_KEY_ID, LITESTREAM_SECRET_ACCESS_KEY
 
 [mounts]
   source = "cmdf_data"
