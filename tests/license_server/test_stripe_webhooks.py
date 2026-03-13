@@ -36,6 +36,7 @@ def _patch_db(db, monkeypatch):
 def _patch_email(monkeypatch):
     """Stub out email delivery."""
     monkeypatch.setattr("license_server.stripe_webhooks.send_license_email", lambda *a, **kw: True)
+    monkeypatch.setattr("license_server.stripe_webhooks.send_bundle_email", lambda *a, **kw: True)
 
 
 def _checkout_event(
@@ -236,3 +237,82 @@ class TestPaymentFailed:
             ("sub_test456",),
         ).fetchone()
         assert row["active"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Bundle tests
+# ---------------------------------------------------------------------------
+
+
+def _bundle_checkout_event(
+    products: str = "claudemd-forge,agent-lint,promptctl",
+    subscription_id: str = "sub_bundle_789",
+    event_id: str = "evt_bundle_001",
+) -> dict:
+    return {
+        "id": event_id,
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "customer_details": {"email": "bundle@example.com"},
+                "customer": "cus_bundle",
+                "subscription": subscription_id,
+                "metadata": {
+                    "product": "bundle",
+                    "bundle_products": products,
+                    "tier": "pro",
+                },
+            }
+        },
+    }
+
+
+class TestBundleCheckout:
+    """Tests for bundle checkout handling."""
+
+    def test_creates_multiple_licenses(self, db):
+        result = handle_checkout_completed(_bundle_checkout_event())
+        assert "bundle_id" in result
+        assert len(result["licenses"]) == 3
+
+        count = db.execute(
+            "SELECT COUNT(*) FROM licenses WHERE email = ?",
+            ("bundle@example.com",),
+        ).fetchone()[0]
+        assert count == 3
+
+    def test_all_products_have_correct_prefix(self, db):
+        result = handle_checkout_completed(_bundle_checkout_event())
+        prefixes = {lic["masked"][:4] for lic in result["licenses"]}
+        assert prefixes == {"CMDF", "ALNT", "PCTL"}
+
+    def test_all_licenses_share_bundle_id(self, db):
+        result = handle_checkout_completed(_bundle_checkout_event())
+        bundle_id = result["bundle_id"]
+
+        rows = db.execute(
+            "SELECT bundle_id FROM licenses WHERE email = ?",
+            ("bundle@example.com",),
+        ).fetchall()
+        assert all(row["bundle_id"] == bundle_id for row in rows)
+
+    def test_default_bundle_products_when_empty(self, db):
+        result = handle_checkout_completed(_bundle_checkout_event(products=""))
+        # Should fall back to BUNDLE_PRODUCTS (all 5)
+        assert len(result["licenses"]) == 5
+
+    def test_bundle_revocation_revokes_all(self, db):
+        handle_checkout_completed(_bundle_checkout_event(subscription_id="sub_bundle_rev"))
+
+        result = handle_subscription_deleted(
+            _subscription_deleted_event(subscription_id="sub_bundle_rev")
+        )
+
+        assert result["revoked"] is True
+        assert result["revoked_count"] == 3
+
+        active = db.execute(
+            "SELECT COUNT(*) FROM licenses WHERE email = ? AND active = 1",
+            ("bundle@example.com",),
+        ).fetchone()[0]
+        assert active == 0

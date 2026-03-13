@@ -85,6 +85,63 @@ def send_license_email(
         return False
 
 
+def send_bundle_email(
+    email: str,
+    licenses: list[tuple[str, str]],
+    tier: str = "pro",
+    bundle_id: str | None = None,
+) -> bool:
+    """Send multiple license keys in a single email.
+
+    licenses: list of (product, plaintext_key) tuples.
+    Returns True on success, False on failure (never raises).
+    """
+    smtp_user = get_smtp_user()
+    smtp_password = get_smtp_password()
+
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured — skipping bundle email to %s", email)
+        return False
+
+    msg = EmailMessage()
+    msg["Subject"] = f"Your Pro Bundle License Keys ({len(licenses)} products)"
+    msg["From"] = get_smtp_from()
+    msg["To"] = email
+    msg.set_content(_build_bundle_body(licenses, tier, bundle_id))
+
+    try:
+        with smtplib.SMTP(get_smtp_host(), get_smtp_port(), timeout=10) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+        logger.info("Bundle email sent to %s (%d keys)", email, len(licenses))
+        return True
+    except Exception:
+        logger.exception("Failed to email bundle keys to %s", email)
+        return False
+
+
+def _build_bundle_body(
+    licenses: list[tuple[str, str]], tier: str, bundle_id: str | None = None
+) -> str:
+    """Build the plain-text email body for a bundle purchase."""
+    lines = [f"Thanks for purchasing the Pro Bundle ({tier.title()})!\n"]
+    lines.append(f"Bundle ID: {bundle_id or 'N/A'}\n")
+    lines.append("Your license keys:\n")
+
+    for product, key in licenses:
+        info = PRODUCT_INFO.get(product, PRODUCT_INFO["claudemd-forge"])
+        lines.append(f"  {info['display']}:")
+        lines.append(f"    Key: {key}")
+        lines.append(f'    Activate: export {info["env_var"]}="{key}"')
+        lines.append(f'    Or save: echo "{key}" > {info["file"]}\n')
+
+    lines.append("These keys are shown once — save them somewhere safe.\n")
+    lines.append("If you have questions, reply to this email.\n")
+    lines.append("— Arete Consortium")
+    return "\n".join(lines)
+
+
 def _build_body(license_key: str, tier: str, product: str = "claudemd-forge") -> str:
     """Build the plain-text email body."""
     info = PRODUCT_INFO.get(product, PRODUCT_INFO["claudemd-forge"])
