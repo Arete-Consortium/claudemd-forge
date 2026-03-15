@@ -95,10 +95,17 @@ class TestKeyValidation:
     def test_whitespace_stripped(self) -> None:
         assert _validate_key_format("  ANMD-ABCD-EFGH-32E3  ") is True
 
+    def test_legacy_cmdf_prefix_accepted(self) -> None:
+        assert _validate_key_format("CMDF-ABCD-EFGH-54EF") is True
+
 
 class TestKeyChecksum:
     def test_valid_checksum(self) -> None:
         assert _validate_key_checksum("ANMD-ABCD-EFGH-32E3") is True
+
+    def test_legacy_cmdf_checksum(self) -> None:
+        # CMDF- keys with old salt should still validate
+        assert _validate_key_checksum("CMDF-ABCD-EFGH-54EF") is True
 
     def test_invalid_checksum(self) -> None:
         # Valid format but wrong check segment.

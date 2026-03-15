@@ -18,15 +18,20 @@ logger = logging.getLogger(__name__)
 
 # Salt used to derive the check segment of license keys.
 _KEY_SALT = "anchormd-v1"
+_LEGACY_KEY_SALT = "claudemd-forge-v1"
 
 # License key file locations (checked in order).
 _LICENSE_LOCATIONS: list[str] = [
     ".anchormd-license",
     "~/.config/anchormd/license",
     "~/.anchormd-license",
+    # Legacy paths for backward compatibility
+    ".claudemd-forge-license",
+    "~/.config/claudemd-forge/license",
 ]
 
 _ENV_LICENSE_KEY = "ANCHORMD_LICENSE"
+_LEGACY_ENV_LICENSE_KEY = "CLAUDEMD_FORGE_LICENSE"
 _ENV_LICENSE_SERVER = "ANCHORMD_LICENSE_SERVER"
 
 # Cache settings.
@@ -174,10 +179,10 @@ class LicenseInfo(BaseModel):
 def _validate_key_format(key: str) -> bool:
     """Check if a license key matches the expected format.
 
-    Format: ANMD-XXXX-XXXX-XXXX where X is uppercase alphanumeric.
+    Format: ANMD-XXXX-XXXX-XXXX or legacy CMDF-XXXX-XXXX-XXXX.
     """
     key = key.strip()
-    if not key.startswith("ANMD-"):
+    if not (key.startswith("ANMD-") or key.startswith("CMDF-")):
         return False
     parts = key.split("-")
     if len(parts) != 4:
@@ -188,37 +193,44 @@ def _validate_key_format(key: str) -> bool:
     return True
 
 
-def _compute_check_segment(body: str) -> str:
+def _compute_check_segment(body: str, salt: str | None = None) -> str:
     """Derive the expected check segment from the key body.
 
     The body is the two middle segments joined by a hyphen,
     e.g. "ABCD-EFGH" for key "ANMD-ABCD-EFGH-XXXX".
     Returns a 4-character uppercase hex string.
     """
-    digest = hashlib.sha256(f"{_KEY_SALT}:{body}".encode()).hexdigest()
+    salt = salt or _KEY_SALT
+    digest = hashlib.sha256(f"{salt}:{body}".encode()).hexdigest()
     return digest[:4].upper()
 
 
 def _validate_key_checksum(key: str) -> bool:
     """Verify the key's check segment matches its body.
 
-    The last segment must equal the HMAC-derived value from
-    segments 2 and 3. This prevents trivially guessed keys.
+    Tries the current salt first, then the legacy salt for
+    backward compatibility with CMDF- prefix keys.
     """
     parts = key.strip().split("-")
     if len(parts) != 4:
         return False
     body = f"{parts[1]}-{parts[2]}"
-    expected = _compute_check_segment(body)
-    return parts[3] == expected
+    # Try current salt
+    if parts[3] == _compute_check_segment(body, _KEY_SALT):
+        return True
+    # Try legacy salt for CMDF- keys
+    if parts[3] == _compute_check_segment(body, _LEGACY_KEY_SALT):
+        return True
+    return False
 
 
 def _find_license_key() -> str | None:
     """Search for a license key in environment and filesystem."""
-    # 1. Check environment variable first.
-    env_key = os.environ.get(_ENV_LICENSE_KEY)
-    if env_key and env_key.strip():
-        return env_key.strip()
+    # 1. Check environment variable (current, then legacy).
+    for env_var in (_ENV_LICENSE_KEY, _LEGACY_ENV_LICENSE_KEY):
+        env_key = os.environ.get(env_var)
+        if env_key and env_key.strip():
+            return env_key.strip()
 
     # 2. Check filesystem locations.
     for location in _LICENSE_LOCATIONS:

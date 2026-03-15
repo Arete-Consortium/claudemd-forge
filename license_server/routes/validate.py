@@ -58,25 +58,42 @@ def validate(req: ValidateRequest, request: Request) -> ValidateResponse:
     conn = get_connection(_db_path_override)
     client_ip = request.client.host if request.client else "unknown"
 
-    # Format check.
-    if not validate_key_format(req.license_key, req.product):
+    # Determine which product names to check (current + legacy alias).
+    product_aliases = [req.product]
+    if req.product == "anchormd":
+        product_aliases.append("claudemd-forge")
+    elif req.product == "claudemd-forge":
+        product_aliases.append("anchormd")
+
+    # Format check — try the requested product, then its alias.
+    format_ok = any(
+        validate_key_format(req.license_key, p) for p in product_aliases
+    )
+    if not format_ok:
         key_h = hash_key(req.license_key)
         _log_validation(conn, key_h, req.machine_id, "invalid_format", client_ip)
         return ValidateResponse(valid=False, tier="free", product=req.product)
 
-    # Checksum check.
-    if not validate_key_checksum(req.license_key, req.product):
+    # Checksum check — try both salts.
+    checksum_ok = any(
+        validate_key_checksum(req.license_key, p) for p in product_aliases
+    )
+    if not checksum_ok:
         key_h = hash_key(req.license_key)
         _log_validation(conn, key_h, req.machine_id, "invalid_checksum", client_ip)
         return ValidateResponse(valid=False, tier="free", product=req.product)
 
-    # Lookup by hash + product.
+    # Lookup by hash — try all product aliases.
     key_h = hash_key(req.license_key)
-    row = conn.execute(
-        "SELECT id, tier, email, active, expires_at, metadata, product FROM licenses "
-        "WHERE key_hash = ? AND product = ?",
-        (key_h, req.product),
-    ).fetchone()
+    row = None
+    for product_name in product_aliases:
+        row = conn.execute(
+            "SELECT id, tier, email, active, expires_at, metadata, product "
+            "FROM licenses WHERE key_hash = ? AND product = ?",
+            (key_h, product_name),
+        ).fetchone()
+        if row is not None:
+            break
 
     if row is None:
         _log_validation(conn, key_h, req.machine_id, "not_found", client_ip)

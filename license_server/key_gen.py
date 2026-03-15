@@ -13,6 +13,7 @@ import secrets
 # Must match the client-side _PREFIX and _SALT in each product's licensing.py
 PRODUCT_KEY_CONFIG: dict[str, tuple[str, str]] = {
     "anchormd": ("ANMD", "anchormd-v1"),
+    "claudemd-forge": ("CMDF", "claudemd-forge-v1"),  # legacy alias
     "agent-lint": ("ALNT", "agent-lint-v1"),
     "ai-spend": ("ASPD", "ai-spend-v1"),
     "promptctl": ("PCTL", "promptctl-v1"),
