@@ -117,7 +117,7 @@ class TestMigrations:
         conn.execute(
             "INSERT INTO licenses (id, key_hash, license_key_masked, tier, email) "
             "VALUES (?, ?, ?, ?, ?)",
-            (lid, key_hash, "CMDF-****-****-XXXX", "pro", "t@t.com"),
+            (lid, key_hash, "ANMD-****-****-XXXX", "pro", "t@t.com"),
         )
         conn.commit()
 
@@ -139,7 +139,7 @@ class TestMigrations:
         key_hash = hashlib.sha256(b"dup").hexdigest()
         conn.execute(
             "INSERT INTO licenses (id, key_hash, license_key_masked, tier) VALUES (?, ?, ?, ?)",
-            (str(uuid.uuid4()), key_hash, "CMDF-****-****-XXXX", "pro"),
+            (str(uuid.uuid4()), key_hash, "ANMD-****-****-XXXX", "pro"),
         )
         conn.commit()
 
@@ -148,7 +148,7 @@ class TestMigrations:
         with pytest.raises(_sqlite3.IntegrityError):
             conn.execute(
                 "INSERT INTO licenses (id, key_hash, license_key_masked, tier) VALUES (?, ?, ?, ?)",
-                (str(uuid.uuid4()), key_hash, "CMDF-****-****-XXXX", "pro"),
+                (str(uuid.uuid4()), key_hash, "ANMD-****-****-XXXX", "pro"),
             )
         conn.close()
 
@@ -165,7 +165,7 @@ class TestMigrations:
         key_hash = hashlib.sha256(b"test").hexdigest()
         conn.execute(
             "INSERT INTO licenses (id, key_hash, license_key_masked, tier) VALUES (?, ?, ?, ?)",
-            (lid, key_hash, "CMDF-****-****-XXXX", "pro"),
+            (lid, key_hash, "ANMD-****-****-XXXX", "pro"),
         )
         conn.execute(
             "INSERT INTO machine_activations (license_id, machine_id) VALUES (?, ?)",

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from claudemd_forge.drift.models import DriftSeverity, RunRecord
-from claudemd_forge.drift.trend import aggregate_trend, render_ascii_trend
+from anchormd.drift.models import DriftSeverity, RunRecord
+from anchormd.drift.trend import aggregate_trend, render_ascii_trend
 
 
 def _make_run(run_id: str, score: float, delta: float = 0.0, severity: str = "stable") -> RunRecord:

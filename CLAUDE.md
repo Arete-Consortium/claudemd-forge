@@ -1,4 +1,4 @@
-# CLAUDE.md — claudemd-forge
+# CLAUDE.md — anchormd
 
 ## Project Overview
 
@@ -9,7 +9,7 @@ Generate and audit CLAUDE.md files for AI coding agents. Freemium CLI with Pro l
 - **Version**: 0.3.0
 - **Language**: Python
 - **Tests**: 134 (license server) + client-side tests
-- **License Server**: `https://cmdf-license.fly.dev` (Fly.io, SQLite + WAL)
+- **License Server**: `https://anmd-license.fly.dev` (Fly.io, SQLite + WAL)
 - **Stripe**: Live — automated checkout → key generation → email delivery
 
 ## Monetization
@@ -23,7 +23,7 @@ Generate and audit CLAUDE.md files for AI coding agents. Freemium CLI with Pro l
 ## Architecture
 
 ```
-claudemd-forge/
+anchormd/
 ├── .github/workflows/
 ├── docs/
 ├── license_server/           # FastAPI license server (separate deployable)
@@ -35,7 +35,7 @@ claudemd-forge/
 │   │   └── webhook.py        # POST /v1/webhooks/stripe
 │   ├── stripe_webhooks.py    # Event handlers (checkout, cancel, payment_failed)
 │   ├── email_delivery.py     # SMTP license key delivery
-│   ├── key_gen.py            # CMDF-XXXX-XXXX-XXXX generation + hashing
+│   ├── key_gen.py            # ANMD-XXXX-XXXX-XXXX generation + hashing
 │   ├── config.py             # Env var configuration
 │   ├── database.py           # SQLite connection + migration runner
 │   ├── models.py             # Pydantic request/response models
@@ -49,7 +49,7 @@ claudemd-forge/
 ├── scripts/
 │   ├── stripe_setup.py       # Create Stripe products/prices/payment links
 │   └── keygen.py             # Manual key generation (legacy)
-├── src/claudemd_forge/       # CLI package (PyPI: claudemd-forge)
+├── src/anchormd/       # CLI package (PyPI: anchormd)
 │   ├── licensing.py          # Client-side key detection, validation, caching
 │   ├── machine_id.py         # Hostname+username hash
 │   ├── gates.py              # @require_pro feature gating
@@ -86,27 +86,27 @@ claudemd-forge/
 
 ## License Key System
 
-- **Format**: `CMDF-XXXX-XXXX-XXXX` (uppercase alphanumeric)
-- **Checksum**: Segment 3 = first 4 hex chars of `SHA256("claudemd-forge-v1:{seg1}-{seg2}")`
+- **Format**: `ANMD-XXXX-XXXX-XXXX` (uppercase alphanumeric)
+- **Checksum**: Segment 3 = first 4 hex chars of `SHA256("anchormd-v1:{seg1}-{seg2}")`
 - **Storage**: SHA-256 hash only — plaintext never stored
-- **Masking**: `CMDF-****-****-{last4}` for display
-- **Client detection**: `CLAUDEMD_FORGE_LICENSE` env var → `.claudemd-forge-license` → `~/.config/claudemd-forge/license`
+- **Masking**: `ANMD-****-****-{last4}` for display
+- **Client detection**: `ANCHORMD_LICENSE` env var → `.anchormd-license` → `~/.config/anchormd/license`
 - **Validation**: Local checksum → server call (5s timeout) → 24h cache → fail-open to local-only
 
 ## Environment Variables
 
 ### License Server (Fly.io secrets)
-- `CMDF_ADMIN_SECRET` — Bearer token for admin endpoints
-- `CMDF_DB_PATH` — SQLite path (default: `/data/license_server.db`)
+- `ANMD_ADMIN_SECRET` — Bearer token for admin endpoints
+- `ANMD_DB_PATH` — SQLite path (default: `/data/license_server.db`)
 - `STRIPE_SECRET_KEY` — Stripe API key
 - `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret
-- `CMDF_SMTP_USER` — Gmail address
-- `CMDF_SMTP_PASSWORD` — Gmail app password
-- `CMDF_SMTP_FROM` — From address for emails
+- `ANMD_SMTP_USER` — Gmail address
+- `ANMD_SMTP_PASSWORD` — Gmail app password
+- `ANMD_SMTP_FROM` — From address for emails
 
 ### Client (user-side)
-- `CLAUDEMD_FORGE_LICENSE` — License key
-- `CLAUDEMD_FORGE_LICENSE_SERVER` — Server URL (optional)
+- `ANCHORMD_LICENSE` — License key
+- `ANCHORMD_LICENSE_SERVER` — Server URL (optional)
 
 ## Common Commands
 
@@ -122,9 +122,9 @@ ruff format src/ tests/ license_server/
 # type check
 mypy src/
 # deploy license server
-fly deploy --dockerfile license_server/Dockerfile -a cmdf-license --config license_server/fly.toml
+fly deploy --dockerfile license_server/Dockerfile -a anmd-license --config license_server/fly.toml
 # health check
-curl https://cmdf-license.fly.dev/v1/health
+curl https://anmd-license.fly.dev/v1/health
 ```
 
 ## Coding Standards

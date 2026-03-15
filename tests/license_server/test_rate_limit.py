@@ -83,7 +83,7 @@ class TestValidateRateLimit:
     def test_validate_under_limit(self, rate_limited_client) -> None:
         resp = rate_limited_client.post(
             "/v1/validate",
-            json={"license_key": "CMDF-AAAA-BBBB-CCCC"},
+            json={"license_key": "ANMD-AAAA-BBBB-CCCC"},
         )
         assert resp.status_code == 200
 

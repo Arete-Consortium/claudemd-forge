@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="ClaudeMD Forge License Server",
+    title="AnchorMD License Server",
     version=__version__,
     lifespan=lifespan,
 )

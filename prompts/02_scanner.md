@@ -1,14 +1,14 @@
 # Prompt 02 — Codebase Scanner
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompt 01 (foundation) is complete — models, config, and project structure exist.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompt 01 (foundation) is complete — models, config, and project structure exist.
 
 ## Task
 Build the codebase scanner that walks a project directory, catalogs files, and produces a `ProjectStructure` model.
 
 ## Steps
 
-1. **Create `src/claudemd_forge/scanner.py`**:
+1. **Create `src/anchormd/scanner.py`**:
 
    ```python
    class CodebaseScanner:
@@ -63,6 +63,6 @@ Build the codebase scanner that walks a project directory, catalogs files, and p
 
 ## Acceptance Criteria
 - `pytest tests/test_scanner.py -v` — all pass
-- Scanner produces correct `ProjectStructure` for the `claudemd-forge` project itself (dogfood test)
-- `ruff check src/claudemd_forge/scanner.py` — clean
+- Scanner produces correct `ProjectStructure` for the `anchormd` project itself (dogfood test)
+- `ruff check src/anchormd/scanner.py` — clean
 - No bare `except:` clauses

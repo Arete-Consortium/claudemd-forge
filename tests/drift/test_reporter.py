@@ -7,14 +7,14 @@ from unittest.mock import MagicMock
 
 from rich.console import Console
 
-from claudemd_forge.drift.models import (
+from anchormd.drift.models import (
     BenchmarkResult,
     CheckResult,
     CheckType,
     DriftSeverity,
     RunRecord,
 )
-from claudemd_forge.drift.reporter import (
+from anchormd.drift.reporter import (
     render_html_report,
     render_json_report,
     render_terminal_report,

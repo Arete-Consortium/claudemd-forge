@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 from typer.testing import CliRunner
 
-from claudemd_forge.cli import app
-from claudemd_forge.gates import (
+from anchormd.cli import app
+from anchormd.gates import (
     check_preset_access,
     get_available_presets,
 )
@@ -20,7 +20,7 @@ class TestRequireProDecorator:
     def test_blocks_free_user(self) -> None:
         """Pro-gated commands should exit 1 for free users."""
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             # The init command is gated behind Pro.
@@ -31,8 +31,8 @@ class TestRequireProDecorator:
     def test_allows_pro_user(self) -> None:
         """Pro-gated commands should run for Pro users."""
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             # init will fail on path validation but should get past the gate.
             result = runner.invoke(app, ["init", "/nonexistent/path"])
@@ -42,7 +42,7 @@ class TestRequireProDecorator:
     def test_diff_blocked_for_free(self) -> None:
         """diff command should be blocked for free users."""
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             result = runner.invoke(app, ["diff", "/tmp"])
@@ -53,7 +53,7 @@ class TestRequireProDecorator:
 class TestCheckPresetAccess:
     def test_free_preset_passes(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             # Should not raise for free presets.
@@ -65,7 +65,7 @@ class TestCheckPresetAccess:
 
         with (
             patch(
-                "claudemd_forge.licensing._find_license_key",
+                "anchormd.licensing._find_license_key",
                 return_value=None,
             ),
             pytest.raises(Exit),
@@ -74,8 +74,8 @@ class TestCheckPresetAccess:
 
     def test_pro_preset_passes_for_pro_user(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             # Should not raise for Pro users.
             check_preset_access("react-native")
@@ -87,7 +87,7 @@ class TestCheckPresetAccess:
 
         with (
             patch(
-                "claudemd_forge.licensing._find_license_key",
+                "anchormd.licensing._find_license_key",
                 return_value=None,
             ),
             pytest.raises(Exit),
@@ -100,7 +100,7 @@ class TestCheckPresetAccess:
 
         with (
             patch(
-                "claudemd_forge.licensing._find_license_key",
+                "anchormd.licensing._find_license_key",
                 return_value=None,
             ),
             pytest.raises(Exit),
@@ -111,7 +111,7 @@ class TestCheckPresetAccess:
 class TestGetAvailablePresets:
     def test_free_user_sees_tiers(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             presets = get_available_presets()
@@ -120,8 +120,8 @@ class TestGetAvailablePresets:
 
     def test_pro_user_sees_unlocked(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             presets = get_available_presets()
             assert presets["default"] == "free"
@@ -131,7 +131,7 @@ class TestGetAvailablePresets:
 class TestCLITierDisplay:
     def test_presets_shows_tier_column(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             result = runner.invoke(app, ["presets"])
@@ -140,7 +140,7 @@ class TestCLITierDisplay:
 
     def test_frameworks_shows_tier_column(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             result = runner.invoke(app, ["frameworks"])
@@ -149,7 +149,7 @@ class TestCLITierDisplay:
 
     def test_status_command(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             result = runner.invoke(app, ["status"])
@@ -158,8 +158,8 @@ class TestCLITierDisplay:
 
     def test_status_pro(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             result = runner.invoke(app, ["status"])
             assert result.exit_code == 0

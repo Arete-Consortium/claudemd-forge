@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from claudemd_forge.generators.checkers import (
+from anchormd.generators.checkers import (
     AccuracyChecker,
     AntiPatternChecker,
     CoverageChecker,
     FreshnessChecker,
     SpecificityChecker,
 )
-from claudemd_forge.models import AnalysisResult, FileInfo, ProjectStructure
+from anchormd.models import AnalysisResult, FileInfo, ProjectStructure
 
 
 class TestCoverageChecker:

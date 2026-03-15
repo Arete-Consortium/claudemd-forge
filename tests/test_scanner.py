@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from claudemd_forge.exceptions import ScanError
-from claudemd_forge.models import ForgeConfig
-from claudemd_forge.scanner import CodebaseScanner
+from anchormd.exceptions import ScanError
+from anchormd.models import ForgeConfig
+from anchormd.scanner import CodebaseScanner
 
 
 @pytest.fixture
@@ -303,7 +303,7 @@ class TestProjectMetadata:
 
 class TestDogfood:
     def test_scan_self(self) -> None:
-        """Scanner should work on the claudemd-forge project itself."""
+        """Scanner should work on the anchormd project itself."""
         root = Path(__file__).parent.parent
         config = ForgeConfig(root_path=root)
         scanner = CodebaseScanner(config)

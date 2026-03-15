@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 VALID_PRODUCTS = frozenset(
     {
-        "claudemd-forge",
+        "anchormd",
         "agent-lint",
         "ai-spend",
         "promptctl",
@@ -24,7 +24,7 @@ class ActivateRequest(BaseModel):
 
     email: str
     tier: str = "pro"
-    product: str = "claudemd-forge"
+    product: str = "anchormd"
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -32,7 +32,7 @@ class ValidateRequest(BaseModel):
     """Request body for POST /v1/validate."""
 
     license_key: str
-    product: str = "claudemd-forge"
+    product: str = "anchormd"
     machine_id: str | None = None
 
 
@@ -65,7 +65,7 @@ class ValidateResponse(BaseModel):
 
     valid: bool
     tier: str
-    product: str = "claudemd-forge"
+    product: str = "anchormd"
     active: bool = False
     email: str | None = None
     expires_at: str | None = None
@@ -76,7 +76,7 @@ class RevokeRequest(BaseModel):
     """Request body for POST /v1/revoke."""
 
     license_key: str
-    product: str = "claudemd-forge"
+    product: str = "anchormd"
 
 
 class RevokeResponse(BaseModel):
@@ -84,7 +84,7 @@ class RevokeResponse(BaseModel):
 
     revoked: bool
     license_key_masked: str
-    product: str = "claudemd-forge"
+    product: str = "anchormd"
     email: str | None = None
     revoked_at: str
 

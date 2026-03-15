@@ -7,13 +7,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from claudemd_forge.drift.adapters import get_adapter
-from claudemd_forge.drift.adapters.anthropic import AnthropicAdapter
-from claudemd_forge.drift.adapters.base import ModelAdapter
-from claudemd_forge.drift.adapters.google import GoogleAdapter
-from claudemd_forge.drift.adapters.ollama import OllamaAdapter
-from claudemd_forge.drift.adapters.openai import OpenAIAdapter
-from claudemd_forge.exceptions import DriftError
+from anchormd.drift.adapters import get_adapter
+from anchormd.drift.adapters.anthropic import AnthropicAdapter
+from anchormd.drift.adapters.base import ModelAdapter
+from anchormd.drift.adapters.google import GoogleAdapter
+from anchormd.drift.adapters.ollama import OllamaAdapter
+from anchormd.drift.adapters.openai import OpenAIAdapter
+from anchormd.exceptions import DriftError
 
 
 class TestGetAdapter:

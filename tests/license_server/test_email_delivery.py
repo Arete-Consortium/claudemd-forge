@@ -11,17 +11,17 @@ class TestBuildBody:
     """Tests for email body generation."""
 
     def test_contains_key(self):
-        body = _build_body("CMDF-AB12-CD34-EF56", "pro")
-        assert "CMDF-AB12-CD34-EF56" in body
+        body = _build_body("ANMD-AB12-CD34-EF56", "pro")
+        assert "ANMD-AB12-CD34-EF56" in body
 
     def test_contains_tier(self):
-        body = _build_body("CMDF-AB12-CD34-EF56", "pro")
+        body = _build_body("ANMD-AB12-CD34-EF56", "pro")
         assert "Pro" in body
 
     def test_contains_activation_instructions(self):
-        body = _build_body("CMDF-AB12-CD34-EF56", "pro")
-        assert "CLAUDEMD_FORGE_LICENSE" in body
-        assert ".claudemd-forge-license" in body
+        body = _build_body("ANMD-AB12-CD34-EF56", "pro")
+        assert "ANCHORMD_LICENSE" in body
+        assert ".anchormd-license" in body
 
 
 class TestSendLicenseEmail:
@@ -31,14 +31,14 @@ class TestSendLicenseEmail:
         monkeypatch.setattr("license_server.email_delivery.get_smtp_user", lambda: None)
         monkeypatch.setattr("license_server.email_delivery.get_smtp_password", lambda: None)
 
-        result = send_license_email("test@example.com", "CMDF-AB12-CD34-EF56")
+        result = send_license_email("test@example.com", "ANMD-AB12-CD34-EF56")
         assert result is False
 
     def test_returns_false_when_password_missing(self, monkeypatch):
         monkeypatch.setattr("license_server.email_delivery.get_smtp_user", lambda: "user")
         monkeypatch.setattr("license_server.email_delivery.get_smtp_password", lambda: None)
 
-        result = send_license_email("test@example.com", "CMDF-AB12-CD34-EF56")
+        result = send_license_email("test@example.com", "ANMD-AB12-CD34-EF56")
         assert result is False
 
     def test_sends_email_on_success(self, monkeypatch):
@@ -56,7 +56,7 @@ class TestSendLicenseEmail:
         mock_smtp.__exit__ = MagicMock(return_value=False)
 
         with patch("license_server.email_delivery.smtplib.SMTP", return_value=mock_smtp):
-            result = send_license_email("test@example.com", "CMDF-AB12-CD34-EF56")
+            result = send_license_email("test@example.com", "ANMD-AB12-CD34-EF56")
 
         assert result is True
         mock_smtp_instance.starttls.assert_called_once()
@@ -73,6 +73,6 @@ class TestSendLicenseEmail:
             "license_server.email_delivery.smtplib.SMTP",
             side_effect=ConnectionRefusedError("refused"),
         ):
-            result = send_license_email("test@example.com", "CMDF-AB12-CD34-EF56")
+            result = send_license_email("test@example.com", "ANMD-AB12-CD34-EF56")
 
         assert result is False

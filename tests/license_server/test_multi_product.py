@@ -15,7 +15,7 @@ class TestMultiProductActivate:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 200
-        assert resp.json()["product"] == "claudemd-forge"
+        assert resp.json()["product"] == "anchormd"
 
     def test_activate_agent_lint(self, client, admin_token) -> None:
         resp = client.post(
@@ -36,7 +36,7 @@ class TestMultiProductActivate:
         assert "Unknown product" in resp.json()["detail"]
 
     def test_activate_all_valid_products(self, client, admin_token) -> None:
-        for product in ("claudemd-forge", "agent-lint", "ai-spend", "promptctl"):
+        for product in ("anchormd", "agent-lint", "ai-spend", "promptctl"):
             resp = client.post(
                 "/v1/activate",
                 json={"email": "user@example.com", "product": product},
@@ -61,7 +61,7 @@ class TestMultiProductActivate:
 class TestMultiProductValidate:
     """Validate keys are scoped to their product."""
 
-    def _activate(self, client, admin_token, product="claudemd-forge"):
+    def _activate(self, client, admin_token, product="anchormd"):
         resp = client.post(
             "/v1/activate",
             json={"email": "user@example.com", "product": product},
@@ -82,20 +82,20 @@ class TestMultiProductValidate:
         key = self._activate(client, admin_token, "agent-lint")
         resp = client.post(
             "/v1/validate",
-            json={"license_key": key, "product": "claudemd-forge"},
+            json={"license_key": key, "product": "anchormd"},
         )
         assert resp.json()["valid"] is False
 
     def test_same_key_different_products_isolated(self, client, admin_token) -> None:
         """Keys for one product don't validate against another."""
-        key_forge = self._activate(client, admin_token, "claudemd-forge")
+        key_forge = self._activate(client, admin_token, "anchormd")
         key_lint = self._activate(client, admin_token, "agent-lint")
 
         # Each validates only for its own product
         assert (
             client.post(
                 "/v1/validate",
-                json={"license_key": key_forge, "product": "claudemd-forge"},
+                json={"license_key": key_forge, "product": "anchormd"},
             ).json()["valid"]
             is True
         )
@@ -119,26 +119,26 @@ class TestMultiProductValidate:
         assert (
             client.post(
                 "/v1/validate",
-                json={"license_key": key_lint, "product": "claudemd-forge"},
+                json={"license_key": key_lint, "product": "anchormd"},
             ).json()["valid"]
             is False
         )
 
     def test_default_product_backward_compat(self, client, admin_token) -> None:
-        """Omitting product defaults to claudemd-forge."""
-        key = self._activate(client, admin_token, "claudemd-forge")
+        """Omitting product defaults to anchormd."""
+        key = self._activate(client, admin_token, "anchormd")
         resp = client.post(
             "/v1/validate",
             json={"license_key": key},
         )
         assert resp.json()["valid"] is True
-        assert resp.json()["product"] == "claudemd-forge"
+        assert resp.json()["product"] == "anchormd"
 
 
 class TestMultiProductRevoke:
     """Revoke is scoped to product."""
 
-    def _activate(self, client, admin_token, product="claudemd-forge"):
+    def _activate(self, client, admin_token, product="anchormd"):
         resp = client.post(
             "/v1/activate",
             json={"email": "user@example.com", "product": product},
@@ -161,7 +161,7 @@ class TestMultiProductRevoke:
         key = self._activate(client, admin_token, "agent-lint")
         resp = client.post(
             "/v1/revoke",
-            json={"license_key": key, "product": "claudemd-forge"},
+            json={"license_key": key, "product": "anchormd"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 404

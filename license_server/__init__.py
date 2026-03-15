@@ -1,3 +1,3 @@
-"""ClaudeMD Forge License Server."""
+"""AnchorMD License Server."""
 
 __version__ = "0.1.0"

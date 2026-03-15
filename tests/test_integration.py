@@ -6,7 +6,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from claudemd_forge.cli import app
+from anchormd.cli import app
 
 runner = CliRunner()
 

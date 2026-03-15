@@ -12,7 +12,7 @@ def _activate_key(db, *, active=1, tier="pro", email="t@t.com"):
     """Insert a license directly into the DB. Returns the plaintext key."""
     key = generate_key()
     key_h = hash_key(key)
-    masked = f"CMDF-****-****-{key.split('-')[3]}"
+    masked = f"ANMD-****-****-{key.split('-')[3]}"
     db.execute(
         "INSERT INTO licenses (id, key_hash, license_key_masked, tier, email, active, metadata) "
         "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -106,7 +106,7 @@ class TestRevokeNotFound:
     def test_unknown_key_returns_404(self, client, admin_token) -> None:
         resp = client.post(
             "/v1/revoke",
-            json={"license_key": "CMDF-FAKE-FAKE-FAKE"},
+            json={"license_key": "ANMD-FAKE-FAKE-FAKE"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 404

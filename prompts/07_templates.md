@@ -1,14 +1,14 @@
 # Prompt 07 — Templates & Presets
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompts 01-06 are complete — full pipeline, CLI, and auditor working.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompts 01-06 are complete — full pipeline, CLI, and auditor working.
 
 ## Task
 Build the template system with framework-specific presets and Jinja2 rendering. This is the "value add" layer — curated, opinionated templates that save developers from writing generic CLAUDE.md files.
 
 ## Steps
 
-### 1. Base Template (`src/claudemd_forge/templates/base.py`)
+### 1. Base Template (`src/anchormd/templates/base.py`)
 
 ```python
 class BaseTemplate:
@@ -45,7 +45,7 @@ class BaseTemplate:
         """Render a section template with context variables."""
 ```
 
-### 2. Framework Presets (`src/claudemd_forge/templates/frameworks.py`)
+### 2. Framework Presets (`src/anchormd/templates/frameworks.py`)
 
 Each preset extends BaseTemplate with framework-specific defaults:
 
@@ -136,7 +136,7 @@ FRAMEWORK_PRESETS: dict[str, FrameworkPreset] = {
 }
 ```
 
-### 3. Preset Packs (`src/claudemd_forge/templates/presets.py`)
+### 3. Preset Packs (`src/anchormd/templates/presets.py`)
 
 Curated preset combinations for common project types:
 
@@ -198,7 +198,7 @@ class PresetPack(BaseModel):
 ## Acceptance Criteria
 - `pytest tests/test_templates.py -v` — all pass
 - At least 8 framework presets defined and rendering correctly
-- `claudemd-forge presets` lists all available presets
-- `claudemd-forge generate . --preset python-fastapi` uses that preset's defaults
+- `anchormd presets` lists all available presets
+- `anchormd generate . --preset python-fastapi` uses that preset's defaults
 - Auto-detection correctly identifies framework from project files
-- `ruff check src/claudemd_forge/templates/` — clean
+- `ruff check src/anchormd/templates/` — clean

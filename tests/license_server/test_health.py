@@ -34,7 +34,7 @@ class TestHealthEndpoint:
         db.execute(
             "INSERT INTO licenses (id, key_hash, license_key_masked, tier, email, active) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (str(uuid.uuid4()), key_hash, "CMDF-****-****-XXXX", "pro", "test@test.com", 1),
+            (str(uuid.uuid4()), key_hash, "ANMD-****-****-XXXX", "pro", "test@test.com", 1),
         )
         db.commit()
 
@@ -50,7 +50,7 @@ class TestHealthEndpoint:
         db.execute(
             "INSERT INTO licenses (id, key_hash, license_key_masked, tier, email, active) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (str(uuid.uuid4()), key_hash, "CMDF-****-****-XXXX", "pro", "test@test.com", 0),
+            (str(uuid.uuid4()), key_hash, "ANMD-****-****-XXXX", "pro", "test@test.com", 0),
         )
         db.commit()
 

@@ -44,7 +44,7 @@ class TestActivateSuccess:
         )
         data = resp.json()
         assert "license_key" in data
-        assert data["license_key"].startswith("CMDF-")
+        assert data["license_key"].startswith("ANMD-")
 
     def test_returned_key_is_valid(self, client, admin_token) -> None:
         resp = client.post(

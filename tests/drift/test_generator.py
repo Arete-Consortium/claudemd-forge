@@ -6,9 +6,9 @@ import json
 
 import pytest
 
-from claudemd_forge.drift.adapters.base import ModelAdapter
-from claudemd_forge.drift.generator import generate_benchmarks
-from claudemd_forge.exceptions import DriftError
+from anchormd.drift.adapters.base import ModelAdapter
+from anchormd.drift.generator import generate_benchmarks
+from anchormd.exceptions import DriftError
 
 
 class FakeGeneratorAdapter(ModelAdapter):

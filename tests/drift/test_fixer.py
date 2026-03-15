@@ -6,16 +6,16 @@ import json
 
 import pytest
 
-from claudemd_forge.drift.adapters.base import ModelAdapter
-from claudemd_forge.drift.fixer import FixSuggestion, suggest_fixes
-from claudemd_forge.drift.models import (
+from anchormd.drift.adapters.base import ModelAdapter
+from anchormd.drift.fixer import FixSuggestion, suggest_fixes
+from anchormd.drift.models import (
     BenchmarkResult,
     CheckResult,
     CheckType,
     DriftSeverity,
     RunRecord,
 )
-from claudemd_forge.exceptions import DriftError
+from anchormd.exceptions import DriftError
 
 
 class FakeFixerAdapter(ModelAdapter):

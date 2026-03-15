@@ -1,7 +1,7 @@
 # Prompt 01 — Foundation
 
 ## Context
-You are building ClaudeMD Forge, a Python CLI tool that analyzes codebases and generates optimized CLAUDE.md files for AI coding agents. Read CLAUDE.md first for full project context.
+You are building AnchorMD, a Python CLI tool that analyzes codebases and generates optimized CLAUDE.md files for AI coding agents. Read CLAUDE.md first for full project context.
 
 ## Task
 Set up the project foundation: package config, data models, configuration, and basic structure.
@@ -9,22 +9,22 @@ Set up the project foundation: package config, data models, configuration, and b
 ## Steps
 
 1. **Create `pyproject.toml`** with PEP 621 metadata:
-   - Name: `claudemd-forge`
+   - Name: `anchormd`
    - Version: `0.1.0`
    - Description: "Generate and audit CLAUDE.md files for AI coding agents"
    - Author: AreteDriver
    - License: MIT
    - Python requires: `>=3.11`
    - All dependencies from CLAUDE.md
-   - Entry point: `claudemd-forge = "claudemd_forge.cli:app"`
+   - Entry point: `anchormd = "anchormd.cli:app"`
    - Dev dependencies group: pytest, mypy, ruff
    - Ruff config: line-length=100, target-version="py311"
 
-2. **Create `src/claudemd_forge/__init__.py`**:
+2. **Create `src/anchormd/__init__.py`**:
    - `__version__ = "0.1.0"`
    - `__all__` exports
 
-3. **Create `src/claudemd_forge/models.py`** with Pydantic v2 models:
+3. **Create `src/anchormd/models.py`** with Pydantic v2 models:
    ```python
    class FileInfo(BaseModel):
        path: Path
@@ -72,7 +72,7 @@ Set up the project foundation: package config, data models, configuration, and b
        max_files: int = 5000
    ```
 
-4. **Create `src/claudemd_forge/config.py`**:
+4. **Create `src/anchormd/config.py`**:
    - `DEFAULT_EXCLUDE_DIRS`: list of directories to always skip
    - `LANGUAGE_EXTENSIONS`: dict mapping file extensions to language names
    - `FRAMEWORK_INDICATORS`: dict mapping framework names to detection files
@@ -84,7 +84,7 @@ Set up the project foundation: package config, data models, configuration, and b
    - `SECTION_ORDER`: default ordering of CLAUDE.md sections
    - `BUILTIN_PRESETS`: dict of preset names to config overrides
 
-5. **Create `src/claudemd_forge/exceptions.py`**:
+5. **Create `src/anchormd/exceptions.py`**:
    - `ForgeError(Exception)` — base
    - `ScanError(ForgeError)` — filesystem issues
    - `AnalysisError(ForgeError)` — analysis failures

@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from claudemd_forge.drift.models import (
+from anchormd.drift.models import (
     BenchmarkDef,
     BenchmarkResult,
     CheckResult,
     CheckType,
     DriftSeverity,
 )
-from claudemd_forge.drift.scorer import (
+from anchormd.drift.scorer import (
     DRIFT_THRESHOLDS,
     classify_severity,
     compute_delta,

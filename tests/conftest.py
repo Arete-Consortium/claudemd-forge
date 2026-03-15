@@ -1,4 +1,4 @@
-"""Shared test fixtures for ClaudeMD Forge."""
+"""Shared test fixtures for AnchorMD."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from claudemd_forge.models import ForgeConfig
+from anchormd.models import ForgeConfig
 
 
 @pytest.fixture

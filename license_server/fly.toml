@@ -1,11 +1,11 @@
-app = 'cmdf-license'
+app = 'anmd-license'
 primary_region = 'sjc'
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  CMDF_DB_PATH = "/data/license_server.db"
+  ANMD_DB_PATH = "/data/license_server.db"
   # Litestream secrets (set via `fly secrets set`):
   # LITESTREAM_REPLICA_BUCKET, LITESTREAM_REPLICA_ENDPOINT,
   # LITESTREAM_ACCESS_KEY_ID, LITESTREAM_SECRET_ACCESS_KEY

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from claudemd_forge.cli import app
+from anchormd.cli import app
 
 runner = CliRunner()
 
@@ -40,7 +40,7 @@ class TestGenerate:
     def test_generate_quiet_suppresses_output(self, tmp_project: Path) -> None:
         result = runner.invoke(app, ["generate", str(tmp_project), "--quiet"])
         assert result.exit_code == 0
-        assert "ClaudeMD Forge" not in result.output
+        assert "AnchorMD" not in result.output
 
     def test_generate_invalid_path(self, tmp_path: Path) -> None:
         result = runner.invoke(app, ["generate", str(tmp_path / "nonexistent")])

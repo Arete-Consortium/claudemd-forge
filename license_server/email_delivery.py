@@ -18,11 +18,11 @@ logger = logging.getLogger(__name__)
 
 # Product display names and env var names for activation instructions
 PRODUCT_INFO: dict[str, dict[str, str]] = {
-    "claudemd-forge": {
-        "display": "ClaudeMD Forge",
-        "env_var": "CLAUDEMD_FORGE_LICENSE",
-        "file": "~/.claudemd-forge-license",
-        "issues": "https://github.com/Arete-Consortium/claudemd-forge/issues",
+    "anchormd": {
+        "display": "AnchorMD",
+        "env_var": "ANCHORMD_LICENSE",
+        "file": "~/.anchormd-license",
+        "issues": "https://github.com/Arete-Consortium/anchormd/issues",
     },
     "agent-lint": {
         "display": "Agent Lint",
@@ -52,7 +52,7 @@ PRODUCT_INFO: dict[str, dict[str, str]] = {
 
 
 def send_license_email(
-    email: str, license_key: str, tier: str = "pro", product: str = "claudemd-forge"
+    email: str, license_key: str, tier: str = "pro", product: str = "anchormd"
 ) -> bool:
     """Send a license key to the customer via SMTP.
 
@@ -65,7 +65,7 @@ def send_license_email(
         logger.warning("SMTP not configured — skipping email to %s", email)
         return False
 
-    info = PRODUCT_INFO.get(product, PRODUCT_INFO["claudemd-forge"])
+    info = PRODUCT_INFO.get(product, PRODUCT_INFO["anchormd"])
 
     msg = EmailMessage()
     msg["Subject"] = f"Your {info['display']} {tier.title()} License Key"
@@ -130,7 +130,7 @@ def _build_bundle_body(
     lines.append("Your license keys:\n")
 
     for product, key in licenses:
-        info = PRODUCT_INFO.get(product, PRODUCT_INFO["claudemd-forge"])
+        info = PRODUCT_INFO.get(product, PRODUCT_INFO["anchormd"])
         lines.append(f"  {info['display']}:")
         lines.append(f"    Key: {key}")
         lines.append(f'    Activate: export {info["env_var"]}="{key}"')
@@ -142,9 +142,9 @@ def _build_bundle_body(
     return "\n".join(lines)
 
 
-def _build_body(license_key: str, tier: str, product: str = "claudemd-forge") -> str:
+def _build_body(license_key: str, tier: str, product: str = "anchormd") -> str:
     """Build the plain-text email body."""
-    info = PRODUCT_INFO.get(product, PRODUCT_INFO["claudemd-forge"])
+    info = PRODUCT_INFO.get(product, PRODUCT_INFO["anchormd"])
     return f"""Thanks for purchasing {info["display"]} {tier.title()}!
 
 Your license key:

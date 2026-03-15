@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from claudemd_forge.templates.base import BaseTemplate
-from claudemd_forge.templates.frameworks import FRAMEWORK_PRESETS, PREMIUM_PRESETS
-from claudemd_forge.templates.presets import PRESET_PACKS
+from anchormd.templates.base import BaseTemplate
+from anchormd.templates.frameworks import FRAMEWORK_PRESETS, PREMIUM_PRESETS
+from anchormd.templates.presets import PRESET_PACKS
 
 
 class TestBaseTemplate:

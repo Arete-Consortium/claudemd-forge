@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from claudemd_forge.analyzers import run_all
-from claudemd_forge.generators.composer import DocumentComposer
-from claudemd_forge.generators.sections import SectionGenerator
-from claudemd_forge.models import AnalysisResult, ForgeConfig, ProjectStructure
-from claudemd_forge.scanner import CodebaseScanner
+from anchormd.analyzers import run_all
+from anchormd.generators.composer import DocumentComposer
+from anchormd.generators.sections import SectionGenerator
+from anchormd.models import AnalysisResult, ForgeConfig, ProjectStructure
+from anchormd.scanner import CodebaseScanner
 
 
 def _full_pipeline(path: Path) -> tuple[ProjectStructure, list[AnalysisResult], ForgeConfig]:
@@ -210,12 +210,12 @@ class TestFullPipeline:
         assert "TypeScript" in result
 
     def test_pipeline_self_dogfood(self) -> None:
-        """Run the full pipeline on claudemd-forge itself."""
+        """Run the full pipeline on anchormd itself."""
         root = Path(__file__).parent.parent
         structure, analyses, config = _full_pipeline(root)
         composer = DocumentComposer(config)
-        result = composer.compose(structure, analyses, project_name="claudemd-forge")
-        assert "# CLAUDE.md — claudemd-forge" in result
+        result = composer.compose(structure, analyses, project_name="anchormd")
+        assert "# CLAUDE.md — anchormd" in result
         assert "Python" in result
         score = composer.estimate_quality_score(result)
         assert score > 40

@@ -12,14 +12,14 @@ import secrets
 # Product → (prefix, salt) mapping
 # Must match the client-side _PREFIX and _SALT in each product's licensing.py
 PRODUCT_KEY_CONFIG: dict[str, tuple[str, str]] = {
-    "claudemd-forge": ("CMDF", "claudemd-forge-v1"),
+    "anchormd": ("ANMD", "anchormd-v1"),
     "agent-lint": ("ALNT", "agent-lint-v1"),
     "ai-spend": ("ASPD", "ai-spend-v1"),
     "promptctl": ("PCTL", "promptctl-v1"),
     "context-hygiene": ("CTHG", "context-hygiene-v1"),
 }
 
-_DEFAULT_PRODUCT = "claudemd-forge"
+_DEFAULT_PRODUCT = "anchormd"
 
 
 def _compute_check_segment(body: str, salt: str) -> str:
@@ -35,7 +35,7 @@ def _compute_check_segment(body: str, salt: str) -> str:
 def generate_key(product: str = _DEFAULT_PRODUCT) -> str:
     """Generate a valid license key for the given product.
 
-    Format: PREFIX-XXXX-XXXX-XXXX (e.g. CMDF-A1B2-C3D4-54EF)
+    Format: PREFIX-XXXX-XXXX-XXXX (e.g. ANMD-A1B2-C3D4-54EF)
     Returns the full plaintext key (only exposed once at activation time).
     """
     config = PRODUCT_KEY_CONFIG.get(product)
@@ -61,7 +61,7 @@ def hash_key(key: str) -> str:
 def mask_key(key: str) -> str:
     """Return a masked version of the key for display/storage.
 
-    CMDF-ABCD-EFGH-54EF -> CMDF-****-****-54EF
+    ANMD-ABCD-EFGH-54EF -> ANMD-****-****-54EF
     ALNT-ABCD-EFGH-54EF -> ALNT-****-****-54EF
     """
     parts = key.strip().split("-")

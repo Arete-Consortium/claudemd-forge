@@ -5,11 +5,11 @@ Handles:
 - customer.subscription.deleted → revoke license (bundle-aware)
 - invoice.payment_failed → log warning (grace period handled by Stripe)
 
-Multi-product: Stripe metadata must include "product" (e.g. "claudemd-forge", "agent-lint").
-Defaults to "claudemd-forge" for backward compatibility.
+Multi-product: Stripe metadata must include "product" (e.g. "anchormd", "agent-lint").
+Defaults to "anchormd" for backward compatibility.
 
 Bundles: When metadata.product = "bundle", metadata.bundle_products is a comma-separated
-list of products (e.g. "claudemd-forge,agent-lint,promptctl"). A key is generated for
+list of products (e.g. "anchormd,agent-lint,promptctl"). A key is generated for
 each product and all keys are sent in a single email.
 """
 
@@ -26,7 +26,7 @@ from license_server.key_gen import generate_key, hash_key, mask_key, validate_ke
 logger = logging.getLogger(__name__)
 
 # Products included in the "bundle" offering
-BUNDLE_PRODUCTS = ["claudemd-forge", "agent-lint", "ai-spend", "promptctl", "context-hygiene"]
+BUNDLE_PRODUCTS = ["anchormd", "agent-lint", "ai-spend", "promptctl", "context-hygiene"]
 
 
 def _create_license(
@@ -97,7 +97,7 @@ def handle_checkout_completed(event: dict) -> dict:
 
     # Extract product and tier from metadata
     metadata = session.get("metadata", {})
-    product = metadata.get("product", "claudemd-forge")
+    product = metadata.get("product", "anchormd")
     tier = metadata.get("tier", "pro")
 
     conn = get_connection()

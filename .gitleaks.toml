@@ -1,4 +1,4 @@
 [allowlist]
   description = "Allowlisted false positives"
   regexTarget = "match"
-  regexes = ['''claudemd-forge-v1''']
+  regexes = ['''anchormd-v1''']

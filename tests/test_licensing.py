@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from claudemd_forge.licensing import (
+from anchormd.licensing import (
     PRO_FEATURES,
     PRO_PRESETS,
     TIER_DEFINITIONS,
@@ -69,40 +69,40 @@ class TestTierDefinitions:
 
 class TestKeyValidation:
     def test_valid_key(self) -> None:
-        assert _validate_key_format("CMDF-ABCD-EFGH-54EF") is True
+        assert _validate_key_format("ANMD-ABCD-EFGH-32E3") is True
 
     def test_valid_key_with_digits(self) -> None:
-        assert _validate_key_format("CMDF-AB12-CD34-EF56") is True
+        assert _validate_key_format("ANMD-AB12-CD34-EF56") is True
 
     def test_invalid_prefix(self) -> None:
         assert _validate_key_format("XXXX-ABCD-EFGH-IJKL") is False
 
     def test_too_few_segments(self) -> None:
-        assert _validate_key_format("CMDF-ABCD-EFGH") is False
+        assert _validate_key_format("ANMD-ABCD-EFGH") is False
 
     def test_too_many_segments(self) -> None:
-        assert _validate_key_format("CMDF-ABCD-EFGH-54EF-MNOP") is False
+        assert _validate_key_format("ANMD-ABCD-EFGH-32E3-MNOP") is False
 
     def test_lowercase_rejected(self) -> None:
-        assert _validate_key_format("CMDF-abcd-EFGH-IJKL") is False
+        assert _validate_key_format("ANMD-abcd-EFGH-IJKL") is False
 
     def test_short_segment(self) -> None:
-        assert _validate_key_format("CMDF-ABC-EFGH-IJKL") is False
+        assert _validate_key_format("ANMD-ABC-EFGH-IJKL") is False
 
     def test_empty_string(self) -> None:
         assert _validate_key_format("") is False
 
     def test_whitespace_stripped(self) -> None:
-        assert _validate_key_format("  CMDF-ABCD-EFGH-54EF  ") is True
+        assert _validate_key_format("  ANMD-ABCD-EFGH-32E3  ") is True
 
 
 class TestKeyChecksum:
     def test_valid_checksum(self) -> None:
-        assert _validate_key_checksum("CMDF-ABCD-EFGH-54EF") is True
+        assert _validate_key_checksum("ANMD-ABCD-EFGH-32E3") is True
 
     def test_invalid_checksum(self) -> None:
         # Valid format but wrong check segment.
-        assert _validate_key_checksum("CMDF-ABCD-EFGH-XXXX") is False
+        assert _validate_key_checksum("ANMD-ABCD-EFGH-XXXX") is False
 
     def test_checksum_is_deterministic(self) -> None:
         seg = _compute_check_segment("ABCD-EFGH")
@@ -123,8 +123,8 @@ class TestKeyChecksum:
     def test_format_valid_but_bad_checksum_stays_free(self) -> None:
         """A key that passes format validation but fails checksum stays free."""
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-XXXX",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-XXXX",
         ):
             info = get_license_info()
             assert info.tier == Tier.FREE
@@ -147,7 +147,7 @@ class TestLicenseDetection:
         with (
             patch.dict(os.environ, {}, clear=True),
             patch(
-                "claudemd_forge.licensing._find_license_key",
+                "anchormd.licensing._find_license_key",
                 return_value=None,
             ),
         ):
@@ -157,17 +157,17 @@ class TestLicenseDetection:
 
     def test_env_var_valid_key(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             info = get_license_info()
             assert info.tier == Tier.PRO
             assert info.valid is True
-            assert info.license_key == "CMDF-ABCD-EFGH-54EF"
+            assert info.license_key == "ANMD-ABCD-EFGH-32E3"
 
     def test_invalid_key_stays_free(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value="not-a-valid-key",
         ):
             info = get_license_info()
@@ -175,21 +175,21 @@ class TestLicenseDetection:
             assert info.valid is False
 
     def test_file_license_key(self, tmp_path: Path) -> None:
-        license_file = tmp_path / ".claudemd-forge-license"
-        license_file.write_text("CMDF-TEST-KEYS-3F80\n")
+        license_file = tmp_path / ".anchormd-license"
+        license_file.write_text("ANMD-TEST-KEYS-187C\n")
 
         with (
             patch(
-                "claudemd_forge.licensing._LICENSE_LOCATIONS",
+                "anchormd.licensing._LICENSE_LOCATIONS",
                 [str(license_file)],
             ),
             patch.dict(os.environ, {}, clear=True),
             patch(
-                "claudemd_forge.licensing.os.environ.get",
+                "anchormd.licensing.os.environ.get",
                 return_value=None,
             ),
         ):
-            from claudemd_forge.licensing import _find_license_key
+            from anchormd.licensing import _find_license_key
 
             key = _find_license_key()
             # The patched location should be found.
@@ -199,28 +199,28 @@ class TestLicenseDetection:
 class TestFeatureAccess:
     def test_free_has_generate(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             assert has_feature("generate") is True
 
     def test_free_lacks_diff(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             assert has_feature("diff") is False
 
     def test_pro_has_diff(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             assert has_feature("diff") is True
 
     def test_free_has_community_preset(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             assert has_preset_access("default") is True
@@ -228,7 +228,7 @@ class TestFeatureAccess:
 
     def test_free_lacks_premium_preset(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             assert has_preset_access("react-native") is False
@@ -236,8 +236,8 @@ class TestFeatureAccess:
 
     def test_pro_has_premium_preset(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             assert has_preset_access("react-native") is True
             assert has_preset_access("data-science") is True
@@ -246,15 +246,15 @@ class TestFeatureAccess:
 class TestIsPro:
     def test_free_tier(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
+            "anchormd.licensing._find_license_key",
             return_value=None,
         ):
             assert is_pro() is False
 
     def test_pro_tier(self) -> None:
         with patch(
-            "claudemd_forge.licensing._find_license_key",
-            return_value="CMDF-ABCD-EFGH-54EF",
+            "anchormd.licensing._find_license_key",
+            return_value="ANMD-ABCD-EFGH-32E3",
         ):
             assert is_pro() is True
 
@@ -270,11 +270,11 @@ class TestUpgradeMessage:
 
     def test_message_contains_url(self) -> None:
         msg = get_upgrade_message("diff")
-        assert "claudemd-forge.dev/pro" in msg
+        assert "anchormd.dev/pro" in msg
 
     def test_message_contains_env_var(self) -> None:
         msg = get_upgrade_message("diff")
-        assert "CLAUDEMD_FORGE_LICENSE" in msg
+        assert "ANCHORMD_LICENSE" in msg
 
 
 class TestProFeatureConstants:
@@ -293,18 +293,18 @@ class TestProFeatureConstants:
 
 # --- Server validation tests ---
 
-_VALID_KEY = "CMDF-ABCD-EFGH-54EF"
+_VALID_KEY = "ANMD-ABCD-EFGH-32E3"
 
 
 class TestValidateWithServer:
     def test_no_server_url_returns_none(self) -> None:
-        with patch("claudemd_forge.licensing._get_license_server_url", return_value=None):
+        with patch("anchormd.licensing._get_license_server_url", return_value=None):
             result = _validate_with_server(_VALID_KEY)
             assert result is None
 
     def test_httpx_not_installed_returns_none(self) -> None:
         with (
-            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch("anchormd.licensing._get_license_server_url", return_value="http://x"),
             patch.dict("sys.modules", {"httpx": None}),
         ):
             result = _validate_with_server(_VALID_KEY)
@@ -323,7 +323,7 @@ class TestValidateWithServer:
         mock_httpx.post.return_value = mock_resp
 
         with (
-            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch("anchormd.licensing._get_license_server_url", return_value="http://x"),
             patch.dict("sys.modules", {"httpx": mock_httpx}),
         ):
             result = _validate_with_server(_VALID_KEY)
@@ -340,7 +340,7 @@ class TestValidateWithServer:
         mock_httpx.post.return_value = mock_resp
 
         with (
-            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch("anchormd.licensing._get_license_server_url", return_value="http://x"),
             patch.dict("sys.modules", {"httpx": mock_httpx}),
         ):
             result = _validate_with_server(_VALID_KEY)
@@ -353,7 +353,7 @@ class TestValidateWithServer:
         mock_httpx.post.side_effect = ConnectionError("refused")
 
         with (
-            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch("anchormd.licensing._get_license_server_url", return_value="http://x"),
             patch.dict("sys.modules", {"httpx": mock_httpx}),
         ):
             result = _validate_with_server(_VALID_KEY)
@@ -366,7 +366,7 @@ class TestValidateWithServer:
         mock_httpx.post.return_value = mock_resp
 
         with (
-            patch("claudemd_forge.licensing._get_license_server_url", return_value="http://x"),
+            patch("anchormd.licensing._get_license_server_url", return_value="http://x"),
             patch.dict("sys.modules", {"httpx": mock_httpx}),
         ):
             result = _validate_with_server(_VALID_KEY)
@@ -379,8 +379,8 @@ class TestCache:
         info = LicenseInfo(tier=Tier.PRO, license_key=_VALID_KEY, valid=True, email="t@t.com")
 
         with (
-            patch("claudemd_forge.licensing._CACHE_DIR", tmp_path),
-            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._CACHE_DIR", tmp_path),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
         ):
             _save_cache(_VALID_KEY, info)
             assert cache_file.exists()
@@ -402,21 +402,21 @@ class TestCache:
         }
         cache_file.write_text(json.dumps(payload))
 
-        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+        with patch("anchormd.licensing._CACHE_FILE", cache_file):
             result = _load_cache(_VALID_KEY)
             assert result is None
 
     def test_cache_wrong_key_returns_none(self, tmp_path: Path) -> None:
         cache_file = tmp_path / "cache.json"
         payload = {
-            "key": "CMDF-XXXX-YYYY-ZZZZ",
+            "key": "ANMD-XXXX-YYYY-ZZZZ",
             "tier": "pro",
             "valid": True,
             "cached_at": time.time(),
         }
         cache_file.write_text(json.dumps(payload))
 
-        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+        with patch("anchormd.licensing._CACHE_FILE", cache_file):
             result = _load_cache(_VALID_KEY)
             assert result is None
 
@@ -424,14 +424,14 @@ class TestCache:
         cache_file = tmp_path / "cache.json"
         cache_file.write_text("not json at all {{{")
 
-        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+        with patch("anchormd.licensing._CACHE_FILE", cache_file):
             result = _load_cache(_VALID_KEY)
             assert result is None
 
     def test_no_cache_file_returns_none(self, tmp_path: Path) -> None:
         cache_file = tmp_path / "nonexistent.json"
 
-        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+        with patch("anchormd.licensing._CACHE_FILE", cache_file):
             result = _load_cache(_VALID_KEY)
             assert result is None
 
@@ -447,7 +447,7 @@ class TestCache:
         }
         cache_file.write_text(json.dumps(payload))
 
-        with patch("claudemd_forge.licensing._CACHE_FILE", cache_file):
+        with patch("anchormd.licensing._CACHE_FILE", cache_file):
             result = _load_cache_expired(_VALID_KEY)
             assert result is not None
             assert result.tier == Tier.PRO
@@ -459,8 +459,8 @@ class TestCache:
         info = LicenseInfo(tier=Tier.PRO, valid=True)
 
         with (
-            patch("claudemd_forge.licensing._CACHE_DIR", cache_dir),
-            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._CACHE_DIR", cache_dir),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
         ):
             _save_cache(_VALID_KEY, info)
             assert cache_dir.exists()
@@ -470,8 +470,8 @@ class TestCache:
         info = LicenseInfo(tier=Tier.PRO, valid=True)
 
         with (
-            patch("claudemd_forge.licensing._CACHE_DIR", tmp_path),
-            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._CACHE_DIR", tmp_path),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
         ):
             _save_cache(_VALID_KEY, info)
             mode = cache_file.stat().st_mode
@@ -494,9 +494,9 @@ class TestServerValidationPipeline:
         cache_file.write_text(json.dumps(payload))
 
         with (
-            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
-            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
-            patch("claudemd_forge.licensing._validate_with_server") as mock_server,
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._validate_with_server") as mock_server,
         ):
             info = get_license_info()
             assert info.tier == Tier.PRO
@@ -510,10 +510,10 @@ class TestServerValidationPipeline:
         )
 
         with (
-            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
-            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
-            patch("claudemd_forge.licensing._CACHE_DIR", tmp_path),
-            patch("claudemd_forge.licensing._validate_with_server", return_value=server_info),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._CACHE_DIR", tmp_path),
+            patch("anchormd.licensing._validate_with_server", return_value=server_info),
         ):
             info = get_license_info()
             assert info.tier == Tier.PRO
@@ -532,9 +532,9 @@ class TestServerValidationPipeline:
         cache_file.write_text(json.dumps(payload))
 
         with (
-            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
-            patch("claudemd_forge.licensing._CACHE_FILE", cache_file),
-            patch("claudemd_forge.licensing._validate_with_server", return_value=None),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._validate_with_server", return_value=None),
         ):
             info = get_license_info()
             assert info.tier == Tier.PRO
@@ -542,10 +542,10 @@ class TestServerValidationPipeline:
 
     def test_no_server_no_cache_falls_back_to_local(self) -> None:
         with (
-            patch("claudemd_forge.licensing._find_license_key", return_value=_VALID_KEY),
-            patch("claudemd_forge.licensing._load_cache", return_value=None),
-            patch("claudemd_forge.licensing._validate_with_server", return_value=None),
-            patch("claudemd_forge.licensing._load_cache_expired", return_value=None),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._load_cache", return_value=None),
+            patch("anchormd.licensing._validate_with_server", return_value=None),
+            patch("anchormd.licensing._load_cache_expired", return_value=None),
         ):
             info = get_license_info()
             assert info.tier == Tier.PRO

@@ -1,14 +1,14 @@
 # Prompt 06 — Auditor
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompts 01-05 are complete — full pipeline and CLI working.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompts 01-05 are complete — full pipeline and CLI working.
 
 ## Task
 Build the auditor that evaluates existing CLAUDE.md files against best practices and the actual codebase state.
 
 ## Steps
 
-### 1. Auditor (`src/claudemd_forge/generators/auditor.py`)
+### 1. Auditor (`src/anchormd/generators/auditor.py`)
 
 ```python
 class ClaudeMdAuditor:
@@ -106,7 +106,7 @@ final_score = clamp(base_score + deductions + section_bonus + specificity_bonus,
 ## Acceptance Criteria
 - `pytest tests/test_auditor.py -v` — all pass
 - Running auditor on this project's own CLAUDE.md produces reasonable findings
-- `claudemd-forge audit CLAUDE.md` shows colored, actionable output
+- `anchormd audit CLAUDE.md` shows colored, actionable output
 - Audit of a truly bad CLAUDE.md (just "# CLAUDE.md" with nothing else) scores < 20
 - Audit of a well-crafted CLAUDE.md scores > 70
-- `ruff check src/claudemd_forge/generators/auditor.py` — clean
+- `ruff check src/anchormd/generators/auditor.py` — clean

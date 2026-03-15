@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create ClaudeMD Forge products and prices on Stripe.
+"""Create AnchorMD products and prices on Stripe.
 
 Prerequisites:
     pip install stripe
@@ -10,7 +10,7 @@ Usage:
     python scripts/stripe_setup.py --live    # Confirm live mode
 
 This creates:
-    - Product: "ClaudeMD Forge Pro"
+    - Product: "AnchorMD Pro"
     - Price: $8/month (recurring)
     - Price: $69/year (recurring)
     - Payment Links for both (printed to stdout)
@@ -28,7 +28,7 @@ except ImportError:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Set up Stripe for ClaudeMD Forge Pro")
+    parser = argparse.ArgumentParser(description="Set up Stripe for AnchorMD Pro")
     parser.add_argument("--live", action="store_true", help="Confirm live mode (not test)")
     args = parser.parse_args()
 
@@ -48,12 +48,12 @@ def main() -> None:
 
     # Create product
     product = stripe.Product.create(
-        name="ClaudeMD Forge Pro",
+        name="AnchorMD Pro",
         description=(
-            "Premium features for ClaudeMD Forge: interactive setup, drift detection, "
+            "Premium features for AnchorMD: interactive setup, drift detection, "
             "premium presets, team templates, and priority support."
         ),
-        metadata={"app": "claudemd-forge", "tier": "pro"},
+        metadata={"app": "anchormd", "tier": "pro"},
     )
     print(f"Product: {product.id}")  # noqa: T201
 
@@ -80,15 +80,15 @@ def main() -> None:
     # Create payment links
     monthly_link = stripe.PaymentLink.create(
         line_items=[{"price": monthly.id, "quantity": 1}],
-        after_completion={"type": "redirect", "redirect": {"url": "https://arete-consortium.github.io/claudemd-forge/?purchased=true"}},
-        metadata={"app": "claudemd-forge", "plan": "monthly"},
+        after_completion={"type": "redirect", "redirect": {"url": "https://arete-consortium.github.io/anchormd/?purchased=true"}},
+        metadata={"app": "anchormd", "plan": "monthly"},
     )
     print(f"\nMonthly payment link: {monthly_link.url}")  # noqa: T201
 
     yearly_link = stripe.PaymentLink.create(
         line_items=[{"price": yearly.id, "quantity": 1}],
-        after_completion={"type": "redirect", "redirect": {"url": "https://arete-consortium.github.io/claudemd-forge/?purchased=true"}},
-        metadata={"app": "claudemd-forge", "plan": "yearly"},
+        after_completion={"type": "redirect", "redirect": {"url": "https://arete-consortium.github.io/anchormd/?purchased=true"}},
+        metadata={"app": "anchormd", "plan": "yearly"},
     )
     print(f"Yearly payment link: {yearly_link.url}")  # noqa: T201
 

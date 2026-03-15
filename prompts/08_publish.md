@@ -1,7 +1,7 @@
 # Prompt 08 — Publish & Ship
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompts 01-07 are complete — everything works locally.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompts 01-07 are complete — everything works locally.
 
 ## Task
 Prepare for PyPI publication and GitHub release. Make it shippable.
@@ -13,7 +13,7 @@ Prepare for PyPI publication and GitHub release. Make it shippable.
 Write a compelling README with:
 
 ```markdown
-# 🔨 ClaudeMD Forge
+# 🔨 AnchorMD
 
 > Generate optimized CLAUDE.md files for AI coding agents in seconds.
 
@@ -27,7 +27,7 @@ AI coding agents are only as good as the context you give them. A well-crafted
 CLAUDE.md is the difference between an agent that writes idiomatic code and one 
 that fights your conventions on every change.
 
-ClaudeMD Forge:
+AnchorMD:
 - 🔍 **Scans** your codebase to detect languages, frameworks, and patterns
 - 📝 **Generates** a complete CLAUDE.md with coding standards, commands, and anti-patterns
 - 🔎 **Audits** existing CLAUDE.md files and scores them against best practices
@@ -36,26 +36,26 @@ ClaudeMD Forge:
 ## Install
 
 \```bash
-pip install claudemd-forge
+pip install anchormd
 \```
 
 ## Quick Start
 
 \```bash
 # Generate a CLAUDE.md for your project
-claudemd-forge generate .
+anchormd generate .
 
 # Audit an existing CLAUDE.md
-claudemd-forge audit ./CLAUDE.md
+anchormd audit ./CLAUDE.md
 
 # Interactive setup
-claudemd-forge init .
+anchormd init .
 
 # See what would change
-claudemd-forge diff .
+anchormd diff .
 
 # List available presets
-claudemd-forge presets
+anchormd presets
 \```
 
 ## Example Output
@@ -141,9 +141,9 @@ jobs:
 - [ ] Lint clean: `ruff check src/ tests/`
 - [ ] Type check clean: `mypy src/`
 - [ ] README renders correctly on GitHub
-- [ ] CLI help text is clear: `claudemd-forge --help`
-- [ ] Tool works on itself: `claudemd-forge generate .` produces valid CLAUDE.md
-- [ ] Audit works on itself: `claudemd-forge audit CLAUDE.md` scores > 60
+- [ ] CLI help text is clear: `anchormd --help`
+- [ ] Tool works on itself: `anchormd generate .` produces valid CLAUDE.md
+- [ ] Audit works on itself: `anchormd audit CLAUDE.md` scores > 60
 - [ ] No hardcoded paths or secrets
 - [ ] Version in `__init__.py` matches `pyproject.toml`
 
@@ -159,9 +159,9 @@ mypy src/
 uv build
 
 # Test install from wheel
-pip install dist/claudemd_forge-0.1.0-py3-none-any.whl
-claudemd-forge --help
-claudemd-forge generate /tmp/some-test-project
+pip install dist/anchormd-0.1.0-py3-none-any.whl
+anchormd --help
+anchormd generate /tmp/some-test-project
 
 # Tag and release
 git tag v0.1.0
@@ -169,12 +169,12 @@ git push origin v0.1.0
 # Create GitHub release → triggers publish workflow
 
 # Verify on PyPI
-pip install claudemd-forge
+pip install anchormd
 ```
 
 ## Acceptance Criteria
 - Package installs cleanly from built wheel
-- `claudemd-forge --help` works after install
+- `anchormd --help` works after install
 - CI pipeline passes on Python 3.11, 3.12, 3.13
 - README renders correctly (no broken markdown)
 - PyPI metadata shows correct description, author, links

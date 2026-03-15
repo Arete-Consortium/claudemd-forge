@@ -18,7 +18,7 @@ def _activate_key(db, *, active=1, tier="pro", email="t@t.com", expires_at=None,
         (
             str(uuid.uuid4()),
             key_h,
-            f"CMDF-****-****-{key.split('-')[3]}",
+            f"ANMD-****-****-{key.split('-')[3]}",
             tier,
             email,
             active,
@@ -65,7 +65,7 @@ class TestValidateInvalid:
         assert resp.json()["tier"] == "free"
 
     def test_bad_checksum(self, client) -> None:
-        resp = client.post("/v1/validate", json={"license_key": "CMDF-ABCD-EFGH-XXXX"})
+        resp = client.post("/v1/validate", json={"license_key": "ANMD-ABCD-EFGH-XXXX"})
         assert resp.json()["valid"] is False
 
     def test_valid_format_not_in_db(self, client) -> None:

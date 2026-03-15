@@ -20,7 +20,7 @@ class TestActivateRequest:
         req = ActivateRequest(email="test@example.com")
         assert req.email == "test@example.com"
         assert req.tier == "pro"
-        assert req.product == "claudemd-forge"
+        assert req.product == "anchormd"
         assert req.metadata == {}
 
     def test_with_tier(self) -> None:
@@ -42,17 +42,17 @@ class TestActivateRequest:
 
 class TestValidateRequest:
     def test_minimal(self) -> None:
-        req = ValidateRequest(license_key="CMDF-ABCD-EFGH-54EF")
-        assert req.license_key == "CMDF-ABCD-EFGH-54EF"
-        assert req.product == "claudemd-forge"
+        req = ValidateRequest(license_key="ANMD-ABCD-EFGH-32E3")
+        assert req.license_key == "ANMD-ABCD-EFGH-32E3"
+        assert req.product == "anchormd"
         assert req.machine_id is None
 
     def test_with_machine_id(self) -> None:
-        req = ValidateRequest(license_key="CMDF-ABCD-EFGH-54EF", machine_id="abc123")
+        req = ValidateRequest(license_key="ANMD-ABCD-EFGH-32E3", machine_id="abc123")
         assert req.machine_id == "abc123"
 
     def test_with_product(self) -> None:
-        req = ValidateRequest(license_key="CMDF-ABCD-EFGH-54EF", product="agent-lint")
+        req = ValidateRequest(license_key="ANMD-ABCD-EFGH-32E3", product="agent-lint")
         assert req.product == "agent-lint"
 
     def test_missing_key_raises(self) -> None:
@@ -76,14 +76,14 @@ class TestHealthResponse:
 class TestActivateResponse:
     def test_required_fields(self) -> None:
         resp = ActivateResponse(
-            license_key="CMDF-ABCD-EFGH-54EF",
+            license_key="ANMD-ABCD-EFGH-32E3",
             tier="pro",
-            product="claudemd-forge",
+            product="anchormd",
             email="t@t.com",
             created_at="2026-03-01T00:00:00",
         )
-        assert resp.license_key == "CMDF-ABCD-EFGH-54EF"
-        assert resp.product == "claudemd-forge"
+        assert resp.license_key == "ANMD-ABCD-EFGH-32E3"
+        assert resp.product == "anchormd"
         assert resp.active is True
         assert resp.expires_at is None
 

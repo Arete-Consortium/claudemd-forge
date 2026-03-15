@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from claudemd_forge.analyzers import run_all
-from claudemd_forge.analyzers.commands import CommandAnalyzer
-from claudemd_forge.analyzers.domain import DomainAnalyzer
-from claudemd_forge.analyzers.language import LanguageAnalyzer
-from claudemd_forge.analyzers.patterns import PatternAnalyzer
-from claudemd_forge.analyzers.skills import SkillsAnalyzer
-from claudemd_forge.models import ForgeConfig
-from claudemd_forge.scanner import CodebaseScanner
+from anchormd.analyzers import run_all
+from anchormd.analyzers.commands import CommandAnalyzer
+from anchormd.analyzers.domain import DomainAnalyzer
+from anchormd.analyzers.language import LanguageAnalyzer
+from anchormd.analyzers.patterns import PatternAnalyzer
+from anchormd.analyzers.skills import SkillsAnalyzer
+from anchormd.models import ForgeConfig
+from anchormd.scanner import CodebaseScanner
 
 
 def _scan(path: Path) -> tuple:
@@ -299,16 +299,19 @@ class TestDomainAnalyzer:
 
 
 class TestRegistry:
-    def test_run_all_returns_five_results(self, tmp_project: Path) -> None:
+    def test_run_all_returns_seven_results(self, tmp_project: Path) -> None:
         structure, config = _scan(tmp_project)
         results = run_all(structure, config)
-        assert len(results) == 5
+        assert len(results) == 7
 
     def test_all_categories_present(self, tmp_project: Path) -> None:
         structure, config = _scan(tmp_project)
         results = run_all(structure, config)
         categories = {r.category for r in results}
-        assert categories == {"language", "patterns", "commands", "domain", "skills"}
+        assert categories == {
+            "language", "patterns", "commands", "domain", "skills",
+            "tech_debt", "github",
+        }
 
     def test_all_valid_analysis_results(self, tmp_project: Path) -> None:
         structure, config = _scan(tmp_project)

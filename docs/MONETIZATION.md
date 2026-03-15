@@ -1,4 +1,4 @@
-# ClaudeMD Forge — Monetization Strategy
+# AnchorMD — Monetization Strategy
 
 ## Tier Structure
 
@@ -28,13 +28,13 @@ Everything in Free, plus:
 | Team templates | Shared org-wide standards (planned) |
 | Priority updates | New analyzer modules first |
 
-**License key format**: `CMDF-XXXX-XXXX-XXXX`
+**License key format**: `ANMD-XXXX-XXXX-XXXX`
 
 **Activation**:
 ```bash
-export CLAUDEMD_FORGE_LICENSE=CMDF-XXXX-XXXX-XXXX
+export ANCHORMD_LICENSE=ANMD-XXXX-XXXX-XXXX
 # or
-echo "CMDF-XXXX-XXXX-XXXX" > ~/.claudemd-forge-license
+echo "ANMD-XXXX-XXXX-XXXX" > ~/.anchormd-license
 ```
 
 ### One-time Packs ($15–25 on Gumroad)
@@ -48,7 +48,7 @@ echo "CMDF-XXXX-XXXX-XXXX" > ~/.claudemd-forge-license
 ```
 licensing.py    — Tier enum, TierConfig, LicenseInfo models
                   License key detection (env var + filesystem)
-                  Key format validation (CMDF-XXXX-XXXX-XXXX)
+                  Key format validation (ANMD-XXXX-XXXX-XXXX)
                   Feature/preset access checks
 
 gates.py        — @require_pro decorator for CLI commands

@@ -4,7 +4,7 @@
 # Or locally: LITESTREAM_* env vars must be set.
 set -euo pipefail
 
-DB_PATH="${CMDF_DB_PATH:-/data/license_server.db}"
+DB_PATH="${ANMD_DB_PATH:-/data/license_server.db}"
 CONFIG="/app/license_server/litestream.yml"
 
 echo "==> Restoring $DB_PATH from Litestream replica..."

@@ -1,4 +1,4 @@
-"""Tests for claudemd-forge telemetry module."""
+"""Tests for anchormd telemetry module."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from claudemd_forge.exceptions import StoreError
-from claudemd_forge.telemetry import (
+from anchormd.exceptions import StoreError
+from anchormd.telemetry import (
     TelemetryStore,
     is_enabled,
     reset_telemetry_store,
@@ -30,19 +30,19 @@ def store(telemetry_db: Path) -> TelemetryStore:
 
 class TestIsEnabled:
     def test_disabled_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("CLAUDEMD_FORGE_TELEMETRY", raising=False)
+        monkeypatch.delenv("ANCHORMD_TELEMETRY", raising=False)
         assert is_enabled() is False
 
     def test_disabled_when_zero(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("CLAUDEMD_FORGE_TELEMETRY", "0")
+        monkeypatch.setenv("ANCHORMD_TELEMETRY", "0")
         assert is_enabled() is False
 
     def test_enabled_when_one(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("CLAUDEMD_FORGE_TELEMETRY", "1")
+        monkeypatch.setenv("ANCHORMD_TELEMETRY", "1")
         assert is_enabled() is True
 
     def test_enabled_with_whitespace(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("CLAUDEMD_FORGE_TELEMETRY", " 1 ")
+        monkeypatch.setenv("ANCHORMD_TELEMETRY", " 1 ")
         assert is_enabled() is True
 
 
@@ -101,13 +101,13 @@ class TestTelemetryStore:
 
 class TestTrackHelpers:
     def test_track_command_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("CLAUDEMD_FORGE_TELEMETRY", raising=False)
+        monkeypatch.delenv("ANCHORMD_TELEMETRY", raising=False)
         reset_telemetry_store()
         track_command("generate")
 
     def test_track_command_enabled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("CLAUDEMD_FORGE_TELEMETRY", "1")
-        monkeypatch.setenv("CLAUDEMD_FORGE_DIR", str(tmp_path))
+        monkeypatch.setenv("ANCHORMD_TELEMETRY", "1")
+        monkeypatch.setenv("ANCHORMD_DIR", str(tmp_path))
         reset_telemetry_store()
         track_command("generate")
         store = TelemetryStore(tmp_path / "telemetry.db")
@@ -118,13 +118,13 @@ class TestTrackHelpers:
             reset_telemetry_store()
 
     def test_track_pro_gate_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("CLAUDEMD_FORGE_TELEMETRY", raising=False)
+        monkeypatch.delenv("ANCHORMD_TELEMETRY", raising=False)
         reset_telemetry_store()
         track_pro_gate("init_interactive")
 
     def test_track_pro_gate_enabled(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("CLAUDEMD_FORGE_TELEMETRY", "1")
-        monkeypatch.setenv("CLAUDEMD_FORGE_DIR", str(tmp_path))
+        monkeypatch.setenv("ANCHORMD_TELEMETRY", "1")
+        monkeypatch.setenv("ANCHORMD_DIR", str(tmp_path))
         reset_telemetry_store()
         track_pro_gate("init_interactive")
         store = TelemetryStore(tmp_path / "telemetry.db")

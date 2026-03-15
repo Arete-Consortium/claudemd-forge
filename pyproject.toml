@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "claudemd-forge"
+name = "anchormd"
 version = "0.3.0"
 description = "Generate and audit CLAUDE.md files for AI coding agents"
 readme = "README.md"
@@ -47,12 +47,12 @@ dev = [
 ]
 
 [project.scripts]
-claudemd-forge = "claudemd_forge.cli:app"
+anchormd = "anchormd.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/Arete-Consortium/claudemd-forge"
-Repository = "https://github.com/Arete-Consortium/claudemd-forge"
-Issues = "https://github.com/Arete-Consortium/claudemd-forge/issues"
+Homepage = "https://github.com/Arete-Consortium/anchormd"
+Repository = "https://github.com/Arete-Consortium/anchormd"
+Issues = "https://github.com/Arete-Consortium/anchormd/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

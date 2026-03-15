@@ -1,4 +1,4 @@
-# ClaudeMD Forge
+# AnchorMD
 
 > Generate optimized CLAUDE.md files for AI coding agents in seconds.
 
@@ -12,7 +12,7 @@ AI coding agents are only as good as the context you give them. A well-crafted
 CLAUDE.md is the difference between an agent that writes idiomatic code and one
 that fights your conventions on every change.
 
-ClaudeMD Forge:
+AnchorMD:
 - **Scans** your codebase to detect languages, frameworks, and patterns
 - **Generates** a complete CLAUDE.md with coding standards, commands, and anti-patterns
 - **Audits** existing CLAUDE.md files and scores them against best practices
@@ -21,34 +21,34 @@ ClaudeMD Forge:
 ## Install
 
 ```bash
-pip install claudemd-forge
+pip install anchormd
 ```
 
 ## Quick Start
 
 ```bash
 # Generate a CLAUDE.md for your project
-claudemd-forge generate .
+anchormd generate .
 
 # Audit an existing CLAUDE.md
-claudemd-forge audit ./CLAUDE.md
+anchormd audit ./CLAUDE.md
 
 # Interactive setup
-claudemd-forge init .
+anchormd init .
 
 # See what would change
-claudemd-forge diff .
+anchormd diff .
 
 # List available presets
-claudemd-forge presets
+anchormd presets
 
 # List framework-specific presets
-claudemd-forge frameworks
+anchormd frameworks
 ```
 
 ## Example Output
 
-Running `claudemd-forge generate .` on a FastAPI project produces:
+Running `anchormd generate .` on a FastAPI project produces:
 
 ```markdown
 # CLAUDE.md — my-api
@@ -102,7 +102,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v6
-      - uses: Arete-Consortium/claudemd-forge@v0.1.0
+      - uses: Arete-Consortium/anchormd@v0.1.0
         with:
           fail-below: 40     # Minimum passing score (0-100)
           comment: true       # Post results as PR comment
@@ -125,11 +125,11 @@ The action posts a formatted comment on your PR with score, findings, and recomm
 
 **Get Pro:** [Monthly ($8/mo)](https://buy.stripe.com/dRm6oH0KD64P9xq13VgrS00) | [Yearly ($69/yr)](https://buy.stripe.com/00w00j64X2SDaBu5kbgrS01)
 
-**All 5 Tools Bundle:** [Monthly ($29/mo)](https://buy.stripe.com/7sY9AT9h90Kv5ha27ZgrS0a) | [Yearly ($199/yr)](https://buy.stripe.com/9B6fZh9h98cX24YfYPgrS0b) — includes claudemd-forge, agent-lint, ai-spend, promptctl, context-hygiene
+**All 5 Tools Bundle:** [Monthly ($29/mo)](https://buy.stripe.com/7sY9AT9h90Kv5ha27ZgrS0a) | [Yearly ($199/yr)](https://buy.stripe.com/9B6fZh9h98cX24YfYPgrS0b) — includes anchormd, agent-lint, ai-spend, promptctl, context-hygiene
 
 **Activate:**
 ```bash
-export CLAUDEMD_FORGE_LICENSE=CMDF-XXXX-XXXX-XXXX
+export ANCHORMD_LICENSE=ANMD-XXXX-XXXX-XXXX
 ```
 
 ## Framework Presets
@@ -158,8 +158,8 @@ Forge scores your CLAUDE.md on:
 
 ```bash
 # Clone and install
-git clone https://github.com/Arete-Consortium/claudemd-forge.git
-cd claudemd-forge
+git clone https://github.com/Arete-Consortium/anchormd.git
+cd anchormd
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 

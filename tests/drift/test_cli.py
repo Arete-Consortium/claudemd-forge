@@ -8,21 +8,21 @@ from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
-from claudemd_forge.cli import app
-from claudemd_forge.drift.models import (
+from anchormd.cli import app
+from anchormd.drift.models import (
     BenchmarkResult,
     CheckResult,
     CheckType,
     DriftSeverity,
     RunRecord,
 )
-from claudemd_forge.drift.storage import ensure_dirs, save_run
+from anchormd.drift.storage import ensure_dirs, save_run
 
 runner = CliRunner()
 
 # Patch targets at the source module, not the lazy-import site.
-_LICENSING = "claudemd_forge.licensing._find_license_key"
-_ADAPTERS = "claudemd_forge.drift.adapters.get_adapter"
+_LICENSING = "anchormd.licensing._find_license_key"
+_ADAPTERS = "anchormd.drift.adapters.get_adapter"
 
 
 def _mock_free_license():
@@ -30,7 +30,7 @@ def _mock_free_license():
 
 
 def _mock_pro_license():
-    return patch(_LICENSING, return_value="CMDF-ABCD-EFGH-54EF")
+    return patch(_LICENSING, return_value="ANMD-ABCD-EFGH-32E3")
 
 
 def _make_run_record(score: float = 0.85) -> RunRecord:
@@ -62,7 +62,7 @@ class TestDriftInit:
     def test_creates_benchmark_file(self, tmp_path: Path) -> None:
         result = runner.invoke(app, ["drift", "init", str(tmp_path)])
         assert result.exit_code == 0
-        assert (tmp_path / ".claudemd" / "benchmarks" / "default.yaml").exists()
+        assert (tmp_path / ".anchormd" / "benchmarks" / "default.yaml").exists()
         assert "benchmarks ready" in result.output
 
     def test_idempotent(self, tmp_path: Path) -> None:
@@ -87,7 +87,7 @@ class TestDriftRun:
         with patch(_ADAPTERS, return_value=mock_adapter):
             result = runner.invoke(app, ["drift", "run", str(tmp_path), "--model", "ollama/test"])
         assert result.exit_code == 0
-        history_dir = tmp_path / ".claudemd" / "drift" / "history"
+        history_dir = tmp_path / ".anchormd" / "drift" / "history"
         assert list(history_dir.glob("*.json"))
 
 
@@ -154,7 +154,7 @@ class TestDriftBaseline:
         result = runner.invoke(app, ["drift", "baseline", str(tmp_path)])
         assert result.exit_code == 0
         assert "Baseline set" in result.output
-        assert (tmp_path / ".claudemd" / "drift" / "baseline.json").exists()
+        assert (tmp_path / ".anchormd" / "drift" / "baseline.json").exists()
 
 
 class TestDriftTrend:

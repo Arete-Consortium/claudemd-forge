@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from claudemd_forge.drift.models import (
+from anchormd.drift.models import (
     BenchmarkCheck,
     BenchmarkDef,
     BenchmarkResult,

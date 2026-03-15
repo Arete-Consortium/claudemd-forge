@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from claudemd_forge.drift.adapters.base import ModelAdapter
-from claudemd_forge.drift.models import (
+from anchormd.drift.adapters.base import ModelAdapter
+from anchormd.drift.models import (
     BenchmarkCheck,
     BenchmarkDef,
     BenchmarkSuite,
     CheckType,
 )
-from claudemd_forge.drift.runner import (
+from anchormd.drift.runner import (
     _check_contains_sections,
     _check_json_valid,
     _check_length_range,

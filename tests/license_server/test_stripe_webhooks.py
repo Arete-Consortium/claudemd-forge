@@ -119,7 +119,7 @@ class TestCheckoutCompleted:
         result = handle_checkout_completed(_checkout_event())
 
         masked = result["license_key_masked"]
-        assert masked.startswith("CMDF-****-****-")
+        assert masked.startswith("ANMD-****-****-")
         assert len(masked) == 19
 
     def test_missing_email_returns_error(self, db):
@@ -245,7 +245,7 @@ class TestPaymentFailed:
 
 
 def _bundle_checkout_event(
-    products: str = "claudemd-forge,agent-lint,promptctl",
+    products: str = "anchormd,agent-lint,promptctl",
     subscription_id: str = "sub_bundle_789",
     event_id: str = "evt_bundle_001",
 ) -> dict:
@@ -284,7 +284,7 @@ class TestBundleCheckout:
     def test_all_products_have_correct_prefix(self, db):
         result = handle_checkout_completed(_bundle_checkout_event())
         prefixes = {lic["masked"][:4] for lic in result["licenses"]}
-        assert prefixes == {"CMDF", "ALNT", "PCTL"}
+        assert prefixes == {"ANMD", "ALNT", "PCTL"}
 
     def test_all_licenses_share_bundle_id(self, db):
         result = handle_checkout_completed(_bundle_checkout_event())

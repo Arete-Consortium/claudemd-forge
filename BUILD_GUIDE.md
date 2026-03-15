@@ -1,4 +1,4 @@
-# ClaudeMD Forge — Build Execution Guide
+# AnchorMD — Build Execution Guide
 
 ## How to Use These Prompts
 
@@ -9,7 +9,7 @@ Run them **in order** — each builds on the previous.
 
 ```bash
 # Create repo
-mkdir claudemd-forge && cd claudemd-forge
+mkdir anchormd && cd anchormd
 git init
 
 # Copy this entire scaffold into the repo
@@ -38,7 +38,7 @@ git commit -m "feat: initial scaffold with CLAUDE.md and build prompts"
 
 ```bash
 # 1. Open Claude Code in the project root
-cd claudemd-forge
+cd anchormd
 claude
 
 # 2. Feed the prompt
@@ -62,16 +62,16 @@ git commit -m "feat: project foundation and data models"
 ### Tips
 
 - **Always run tests before committing.** If tests fail, paste the failure into Claude Code and ask it to fix.
-- **Dogfood early.** After prompt 05, run `claudemd-forge generate .` on the project itself. Fix issues immediately.
+- **Dogfood early.** After prompt 05, run `anchormd generate .` on the project itself. Fix issues immediately.
 - **Don't skip the auditor.** Prompt 06 is what makes this tool premium — it's the reason someone would pay for it.
 - **The templates in prompt 07 are your monetization lever.** Curated, opinionated presets are the value-add over hand-rolling.
 
 ### Post-Build Checklist
 
-- [ ] `claudemd-forge generate .` works on itself
-- [ ] `claudemd-forge audit CLAUDE.md` scores > 60 on its own CLAUDE.md
-- [ ] `claudemd-forge generate /path/to/some/react/project` produces good output
-- [ ] `claudemd-forge generate /path/to/some/python/project` produces good output
+- [ ] `anchormd generate .` works on itself
+- [ ] `anchormd audit CLAUDE.md` scores > 60 on its own CLAUDE.md
+- [ ] `anchormd generate /path/to/some/react/project` produces good output
+- [ ] `anchormd generate /path/to/some/python/project` produces good output
 - [ ] All tests pass across Python 3.11+
 - [ ] Published to PyPI
 - [ ] GitHub repo has: pinned, README with badges, release tagged

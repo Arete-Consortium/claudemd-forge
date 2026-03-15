@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from claudemd_forge.analyzers import run_all
-from claudemd_forge.generators.auditor import ClaudeMdAuditor
-from claudemd_forge.generators.composer import DocumentComposer
-from claudemd_forge.models import ForgeConfig
-from claudemd_forge.scanner import CodebaseScanner
+from anchormd.analyzers import run_all
+from anchormd.generators.auditor import ClaudeMdAuditor
+from anchormd.generators.composer import DocumentComposer
+from anchormd.models import ForgeConfig
+from anchormd.scanner import CodebaseScanner
 
 
 def _setup(path: Path):

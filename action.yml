@@ -1,4 +1,4 @@
-name: "ClaudeMD Forge Audit"
+name: "AnchorMD Audit"
 description: "Audit your CLAUDE.md for quality, accuracy, and completeness"
 author: "Arete-Consortium"
 
@@ -20,7 +20,7 @@ inputs:
     required: false
     default: "true"
   version:
-    description: "claudemd-forge version to install"
+    description: "anchormd version to install"
     required: false
     default: "latest"
 
@@ -40,15 +40,15 @@ runs:
       with:
         python-version: "3.12"
 
-    - name: Install claudemd-forge
+    - name: Install anchormd
       shell: bash
       env:
         INPUT_VERSION: ${{ inputs.version }}
       run: |
         if [ "$INPUT_VERSION" = "latest" ]; then
-          pip install claudemd-forge --quiet
+          pip install anchormd --quiet
         else
-          pip install "claudemd-forge==$INPUT_VERSION" --quiet
+          pip install "anchormd==$INPUT_VERSION" --quiet
         fi
 
     - name: Run audit
@@ -59,7 +59,7 @@ runs:
         INPUT_FAIL_BELOW: ${{ inputs.fail-below }}
       run: |
         set +e
-        RESULT=$(claudemd-forge audit "$INPUT_PATH" --json --fail-below "$INPUT_FAIL_BELOW" 2>&1)
+        RESULT=$(anchormd audit "$INPUT_PATH" --json --fail-below "$INPUT_FAIL_BELOW" 2>&1)
         EXIT_CODE=$?
         set -e
 
@@ -91,7 +91,7 @@ runs:
                 data = {"error": "Failed to parse audit results"}
 
         if "error" in data:
-            body = f"## ClaudeMD Forge Audit\n\n:x: **Error:** {data['error']}\n"
+            body = f"## AnchorMD Audit\n\n:x: **Error:** {data['error']}\n"
         else:
             score = data["score"]
             if score >= 70:
@@ -104,7 +104,7 @@ runs:
                 icon = ":x:"
                 grade = "Failing"
 
-            body = f"## ClaudeMD Forge Audit\n\n{icon} **Score: {score}/100** ({grade})\n"
+            body = f"## AnchorMD Audit\n\n{icon} **Score: {score}/100** ({grade})\n"
 
             findings = data.get("findings", [])
             errors = [f for f in findings if f["severity"] == "error"]
@@ -134,7 +134,7 @@ runs:
                 for r in recs:
                     body += f"- {r}\n"
 
-            body += "\n---\n*Audited by [ClaudeMD Forge](https://github.com/Arete-Consortium/claudemd-forge)*"
+            body += "\n---\n*Audited by [AnchorMD](https://github.com/Arete-Consortium/anchormd)*"
 
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
             f.write("body<<COMMENT_EOF\n")
@@ -154,7 +154,7 @@ runs:
             issue_number: context.issue.number,
           });
           const existing = comments.find(c =>
-            c.user.type === 'Bot' && c.body.includes('ClaudeMD Forge Audit')
+            c.user.type === 'Bot' && c.body.includes('AnchorMD Audit')
           );
           if (existing) {
             await github.rest.issues.updateComment({

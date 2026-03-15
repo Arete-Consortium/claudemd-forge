@@ -1,14 +1,14 @@
 # Prompt 03 — Analyzers
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompts 01-02 are complete — models, config, scanner exist and pass tests.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompts 01-02 are complete — models, config, scanner exist and pass tests.
 
 ## Task
 Build the four analyzers that extract intelligence from the scanned codebase. Each analyzer takes a `ProjectStructure` and `ForgeConfig`, returns an `AnalysisResult`.
 
 ## Steps
 
-### 1. Language Analyzer (`src/claudemd_forge/analyzers/language.py`)
+### 1. Language Analyzer (`src/anchormd/analyzers/language.py`)
 
 ```python
 class LanguageAnalyzer:
@@ -41,7 +41,7 @@ Output `section_content`: Markdown section describing the tech stack for CLAUDE.
 - **CI**: GitHub Actions
 ```
 
-### 2. Pattern Analyzer (`src/claudemd_forge/analyzers/patterns.py`)
+### 2. Pattern Analyzer (`src/anchormd/analyzers/patterns.py`)
 
 ```python
 class PatternAnalyzer:
@@ -67,7 +67,7 @@ Implementation: Read a sample of files, use regex patterns to detect each conven
 
 Output `section_content`: Markdown for "Coding Standards" section.
 
-### 3. Command Analyzer (`src/claudemd_forge/analyzers/commands.py`)
+### 3. Command Analyzer (`src/anchormd/analyzers/commands.py`)
 
 ```python
 class CommandAnalyzer:
@@ -89,7 +89,7 @@ Detects:
 
 Output `section_content`: Markdown for "Common Commands" section with code blocks.
 
-### 4. Domain Analyzer (`src/claudemd_forge/analyzers/domain.py`)
+### 4. Domain Analyzer (`src/anchormd/analyzers/domain.py`)
 
 ```python
 class DomainAnalyzer:
@@ -109,7 +109,7 @@ Detects:
 
 Output `section_content`: Markdown for "Domain Context" section.
 
-### 5. Analyzer Registry (`src/claudemd_forge/analyzers/__init__.py`)
+### 5. Analyzer Registry (`src/anchormd/analyzers/__init__.py`)
 
 ```python
 ANALYZERS: list[type] = [
@@ -137,4 +137,4 @@ For each analyzer, create a temp project fixture and verify:
 - Each analyzer returns valid `AnalysisResult` with non-empty `section_content`
 - Analyzers handle missing files gracefully (no package.json? skip JS detection)
 - No file is read more than once across all analyzers (cache in scanner or pass content)
-- `ruff check src/claudemd_forge/analyzers/` — clean
+- `ruff check src/anchormd/analyzers/` — clean

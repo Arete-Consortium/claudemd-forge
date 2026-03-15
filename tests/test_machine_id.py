@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from claudemd_forge.machine_id import get_machine_id
+from anchormd.machine_id import get_machine_id
 
 
 class TestMachineId:
@@ -27,23 +27,23 @@ class TestMachineId:
 
     def test_no_pii_in_output(self) -> None:
         with (
-            patch("claudemd_forge.machine_id.platform.node", return_value="my-host"),
-            patch("claudemd_forge.machine_id.getpass.getuser", return_value="my-user"),
+            patch("anchormd.machine_id.platform.node", return_value="my-host"),
+            patch("anchormd.machine_id.getpass.getuser", return_value="my-user"),
         ):
             mid = get_machine_id()
             assert "my-host" not in mid
             assert "my-user" not in mid
 
     def test_different_hosts_different_ids(self) -> None:
-        with patch("claudemd_forge.machine_id.platform.node", return_value="host-a"):
+        with patch("anchormd.machine_id.platform.node", return_value="host-a"):
             m1 = get_machine_id()
-        with patch("claudemd_forge.machine_id.platform.node", return_value="host-b"):
+        with patch("anchormd.machine_id.platform.node", return_value="host-b"):
             m2 = get_machine_id()
         assert m1 != m2
 
     def test_different_users_different_ids(self) -> None:
-        with patch("claudemd_forge.machine_id.getpass.getuser", return_value="alice"):
+        with patch("anchormd.machine_id.getpass.getuser", return_value="alice"):
             m1 = get_machine_id()
-        with patch("claudemd_forge.machine_id.getpass.getuser", return_value="bob"):
+        with patch("anchormd.machine_id.getpass.getuser", return_value="bob"):
             m2 = get_machine_id()
         assert m1 != m2

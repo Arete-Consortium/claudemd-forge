@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from claudemd_forge.drift.models import (
+from anchormd.drift.models import (
     BenchmarkCheck,
     BenchmarkDef,
     BenchmarkResult,
@@ -17,7 +17,7 @@ from claudemd_forge.drift.models import (
     DriftSeverity,
     RunRecord,
 )
-from claudemd_forge.drift.storage import (
+from anchormd.drift.storage import (
     ensure_dirs,
     load_baseline,
     load_benchmarks,
@@ -28,7 +28,7 @@ from claudemd_forge.drift.storage import (
     save_run,
     save_trend,
 )
-from claudemd_forge.exceptions import DriftError
+from anchormd.exceptions import DriftError
 
 
 @pytest.fixture
@@ -76,12 +76,12 @@ def _make_record(run_id: str = "abc123", score: float = 0.85) -> RunRecord:
 class TestEnsureDirs:
     def test_creates_directories(self, tmp_path: Path) -> None:
         ensure_dirs(tmp_path)
-        assert (tmp_path / ".claudemd" / "benchmarks").is_dir()
-        assert (tmp_path / ".claudemd" / "drift" / "history").is_dir()
+        assert (tmp_path / ".anchormd" / "benchmarks").is_dir()
+        assert (tmp_path / ".anchormd" / "drift" / "history").is_dir()
 
     def test_idempotent(self, drift_root: Path) -> None:
         ensure_dirs(drift_root)  # Should not raise.
-        assert (drift_root / ".claudemd" / "benchmarks").is_dir()
+        assert (drift_root / ".anchormd" / "benchmarks").is_dir()
 
 
 class TestBenchmarks:
@@ -103,22 +103,22 @@ class TestBenchmarks:
     def test_save_auto_yaml_extension(self, drift_root: Path) -> None:
         suite = _make_suite()
         save_benchmarks(drift_root, suite, "no_ext")
-        assert (drift_root / ".claudemd" / "benchmarks" / "no_ext.yaml").exists()
+        assert (drift_root / ".anchormd" / "benchmarks" / "no_ext.yaml").exists()
 
     def test_load_invalid_yaml(self, drift_root: Path) -> None:
-        bad_file = drift_root / ".claudemd" / "benchmarks" / "bad.yaml"
+        bad_file = drift_root / ".anchormd" / "benchmarks" / "bad.yaml"
         bad_file.write_text(": invalid: yaml: {{")
         with pytest.raises(DriftError, match="Failed to parse"):
             load_benchmarks(drift_root)
 
     def test_load_invalid_schema(self, drift_root: Path) -> None:
-        bad_file = drift_root / ".claudemd" / "benchmarks" / "bad.yaml"
+        bad_file = drift_root / ".anchormd" / "benchmarks" / "bad.yaml"
         bad_file.write_text(yaml.dump({"version": 1, "benchmarks": [{"id": 123}]}))
         with pytest.raises(DriftError, match="Failed to parse"):
             load_benchmarks(drift_root)
 
     def test_load_skips_empty_yaml(self, drift_root: Path) -> None:
-        (drift_root / ".claudemd" / "benchmarks" / "empty.yaml").write_text("")
+        (drift_root / ".anchormd" / "benchmarks" / "empty.yaml").write_text("")
         loaded = load_benchmarks(drift_root)
         assert loaded == []
 
@@ -142,7 +142,7 @@ class TestBaseline:
         assert load_baseline(drift_root) is None
 
     def test_load_corrupt(self, drift_root: Path) -> None:
-        path = drift_root / ".claudemd" / "drift" / "baseline.json"
+        path = drift_root / ".anchormd" / "drift" / "baseline.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("not json")
         assert load_baseline(drift_root) is None
@@ -183,7 +183,7 @@ class TestRunHistory:
     def test_skips_corrupt_files(self, drift_root: Path) -> None:
         record = _make_record()
         save_run(drift_root, record)
-        bad = drift_root / ".claudemd" / "drift" / "history" / "2026-03-01_badfile.json"
+        bad = drift_root / ".anchormd" / "drift" / "history" / "2026-03-01_badfile.json"
         bad.write_text("not json")
         history = load_history(drift_root)
         assert len(history) == 1
@@ -200,13 +200,13 @@ class TestTrend:
         assert load_trend(drift_root) == []
 
     def test_load_corrupt(self, drift_root: Path) -> None:
-        path = drift_root / ".claudemd" / "drift" / "trend.json"
+        path = drift_root / ".anchormd" / "drift" / "trend.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("not json")
         assert load_trend(drift_root) == []
 
     def test_load_non_list(self, drift_root: Path) -> None:
-        path = drift_root / ".claudemd" / "drift" / "trend.json"
+        path = drift_root / ".anchormd" / "drift" / "trend.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('{"not": "a list"}')
         assert load_trend(drift_root) == []

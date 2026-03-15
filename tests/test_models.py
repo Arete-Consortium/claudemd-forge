@@ -7,7 +7,7 @@ from pathlib import Path
 import pydantic
 import pytest
 
-from claudemd_forge.models import (
+from anchormd.models import (
     AnalysisResult,
     AuditFinding,
     AuditReport,

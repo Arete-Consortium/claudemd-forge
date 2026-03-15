@@ -1,14 +1,14 @@
 # Prompt 05 — CLI Interface
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompts 01-04 are complete — models, scanner, analyzers, and generators all exist and pass tests.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompts 01-04 are complete — models, scanner, analyzers, and generators all exist and pass tests.
 
 ## Task
 Build the CLI interface using Typer with rich terminal output.
 
 ## Steps
 
-### 1. CLI Entrypoint (`src/claudemd_forge/cli.py`)
+### 1. CLI Entrypoint (`src/anchormd/cli.py`)
 
 ```python
 import typer
@@ -17,7 +17,7 @@ from rich.panel import Panel
 from rich.progress import Progress
 
 app = typer.Typer(
-    name="claudemd-forge",
+    name="anchormd",
     help="Generate and audit CLAUDE.md files for AI coding agents.",
     no_args_is_help=True,
 )
@@ -94,7 +94,7 @@ Use rich for all terminal output:
 
 Example output:
 ```
-╭─ ClaudeMD Forge ─────────────────────────────────╮
+╭─ AnchorMD ─────────────────────────────────╮
 │                                                    │
 │  📁 Scanned: 247 files across 12 languages        │
 │  🔍 Analyzed: tech stack, patterns, commands       │
@@ -121,9 +121,9 @@ Use `typer.testing.CliRunner`:
 - Test: `--help` shows usage info for each command
 
 ## Acceptance Criteria
-- `python -m claudemd_forge generate .` works on the claudemd-forge project itself
-- `python -m claudemd_forge audit CLAUDE.md` produces findings
+- `python -m anchormd generate .` works on the anchormd project itself
+- `python -m anchormd audit CLAUDE.md` produces findings
 - All CLI tests pass
 - Exit codes: 0 for success, 1 for error, 2 for warnings-only
 - No tracebacks shown to user — all exceptions caught and displayed as rich panels
-- `ruff check src/claudemd_forge/cli.py` — clean
+- `ruff check src/anchormd/cli.py` — clean

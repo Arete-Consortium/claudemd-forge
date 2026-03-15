@@ -1,14 +1,14 @@
 # Prompt 04 — Generators
 
 ## Context
-You are building ClaudeMD Forge. Read CLAUDE.md for full context. Prompts 01-03 are complete — models, scanner, and all four analyzers exist and pass tests.
+You are building AnchorMD. Read CLAUDE.md for full context. Prompts 01-03 are complete — models, scanner, and all four analyzers exist and pass tests.
 
 ## Task
 Build the generators that compose analyzer results into a complete, polished CLAUDE.md document.
 
 ## Steps
 
-### 1. Section Generator (`src/claudemd_forge/generators/sections.py`)
+### 1. Section Generator (`src/anchormd/generators/sections.py`)
 
 ```python
 class SectionGenerator:
@@ -54,7 +54,7 @@ Key anti-pattern inference rules:
 - Docker detected → "Do NOT hardcode secrets — use environment variables"
 - Tests detected → "Do NOT skip writing tests for new code"
 
-### 2. Document Composer (`src/claudemd_forge/generators/composer.py`)
+### 2. Document Composer (`src/anchormd/generators/composer.py`)
 
 ```python
 class DocumentComposer:
@@ -104,7 +104,7 @@ Composition rules:
 
 ## Acceptance Criteria
 - `pytest tests/test_generators.py -v` — all pass
-- Running full pipeline on `claudemd-forge` itself produces a sensible CLAUDE.md
+- Running full pipeline on `anchormd` itself produces a sensible CLAUDE.md
 - Output is clean markdown that renders correctly
 - Quality score for self-generated CLAUDE.md is > 60
-- `ruff check src/claudemd_forge/generators/` — clean
+- `ruff check src/anchormd/generators/` — clean

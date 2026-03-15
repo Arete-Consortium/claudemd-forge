@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate valid ClaudeMD Forge Pro license keys.
+"""Generate valid AnchorMD Pro license keys.
 
 Usage:
     python scripts/keygen.py              # Generate one key
@@ -15,7 +15,7 @@ from pathlib import Path
 # Add src/ to path so we can import the canonical salt and checksum function.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from claudemd_forge.licensing import _compute_check_segment  # noqa: E402
+from anchormd.licensing import _compute_check_segment  # noqa: E402
 
 
 def generate_key() -> str:
@@ -28,7 +28,7 @@ def generate_key() -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate ClaudeMD Forge license keys")
+    parser = argparse.ArgumentParser(description="Generate AnchorMD license keys")
     parser.add_argument("--count", type=int, default=1, help="Number of keys to generate")
     parser.add_argument("--email", type=str, help="Associate email (for your records)")
     args = parser.parse_args()

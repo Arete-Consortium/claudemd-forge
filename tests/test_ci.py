@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from claudemd_forge.ci import generate_github_action, get_action_template
+from anchormd.ci import generate_github_action, get_action_template
 
 
 class TestGitHubAction:
@@ -17,7 +17,7 @@ class TestGitHubAction:
     def test_template_has_required_sections(self) -> None:
         template = get_action_template()
         assert "pull_request" in template
-        assert "claudemd-forge" in template
+        assert "anchormd" in template
         assert "audit" in template
         assert "Comment on PR" in template
 
@@ -51,7 +51,7 @@ class TestGitHubAction:
     def test_generate_creates_file(self, tmp_path: Path) -> None:
         result = generate_github_action(tmp_path)
         assert result.exists()
-        assert result.name == "claudemd-audit.yml"
+        assert result.name == "anchormd-audit.yml"
         assert result.parent.name == "workflows"
 
     def test_generate_creates_directory_structure(self, tmp_path: Path) -> None:

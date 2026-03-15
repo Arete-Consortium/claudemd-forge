@@ -24,7 +24,7 @@ COPY --from=builder /install /usr/local
 COPY license_server/ ./license_server/
 
 ENV PYTHONPATH="/app"
-ENV CMDF_DB_PATH="/data/license_server.db"
+ENV ANMD_DB_PATH="/data/license_server.db"
 
 RUN useradd -m -u 1000 appuser \
     && mkdir -p /data \
