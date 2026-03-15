@@ -1,6 +1,6 @@
-"""AnchorMD — Generate and audit CLAUDE.md files for AI coding agents."""
+"""AnchorMD — Generate and audit AI agent context files."""
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "__version__",
