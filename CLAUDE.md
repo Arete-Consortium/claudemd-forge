@@ -160,6 +160,54 @@ curl https://anmd-license.fly.dev/v1/health
 ### Dev
 - pytest, mypy, ruff, httpx
 
+## Web UI Roadmap (April 2026 Sprint)
+
+**Strategic context:** Claude Code adoption is accelerating. Every user needs a CLAUDE.md. Most write poor ones. anchormd is the tool that fixes that.
+
+**Revenue targets:**
+- Free tier: Single repo scan, basic CLAUDE.md output
+- Pro ($8/mo or $69/yr): Full audit, multi-repo, PR integration, history (existing)
+- One-time ($29): Single deep repo scan with recommendations (new web product)
+
+### Phase 1 — MVP Web UI (April 1–14)
+Goal: GitHub URL in → CLAUDE.md out. No auth, no payment. Shareable link.
+- FastAPI endpoint: `POST /scan` — accepts GitHub repo URL, returns generated CLAUDE.md
+- Port generation logic from CLI to `api/core/generator.py`
+- React landing page: URL input → loading → output with copy button
+- Deploy on Fly.io
+
+**Done when:** A stranger can paste a public GitHub URL and get a usable CLAUDE.md in under 30 seconds.
+
+### Phase 2 — Stripe Gate (April 14–21)
+Goal: Paywalled audit feature. First dollar from web product.
+- Stripe Checkout — one-time $29 deep scan
+- Email delivery of audit report (no auth required yet)
+
+### Phase 3 — Distribution (April 21–28)
+Goal: First 100 users. First 3 paying customers.
+- r/ClaudeAI, r/cursor, r/LocalLLaMA, Show HN, X/Twitter, Substack
+
+### Phase 4 — Subscription + Auth (April 28–May 12)
+Goal: Recurring revenue. Multi-repo. PR integration.
+- GitHub OAuth
+- Multi-repo dashboard
+- GitHub PR creation: push generated CLAUDE.md directly to repo
+
+### Key Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Web UI over CLI-only | CLI has low monetization ceiling; web enables Stripe gate |
+| One-time $29 before subscription | Lowest friction first purchase; validate willingness to pay |
+| Fly.io deployment | Consistent with existing infra |
+
+### IP Notes
+- Core generation algorithm (repo structure → CLAUDE.md schema) is proprietary
+- Audit ruleset (anti-patterns, gap detection) is proprietary
+- Do not open-source the API or web layer; CLI can remain MIT
+
+---
+
 ## Git Conventions
 
 - Commit messages: Conventional commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`)
