@@ -57,6 +57,12 @@ anchormd/
 ├── tests/
 │   ├── drift/
 │   └── license_server/
+├── web/                         # Phase 1 Web UI (anchormd-web on Fly.io)
+│   ├── app.py                   # FastAPI: POST /api/scan, GET /api/scan/{id}
+│   ├── generator.py             # Wrapper around anchormd generation logic
+│   ├── frontend/                # React + Vite + Tailwind (dark theme)
+│   ├── Dockerfile               # Multi-stage build (Node + Python)
+│   └── fly.toml                 # Fly.io config (anchormd-web)
 ├── .dockerignore
 ├── pyproject.toml
 ```
