@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && \
 COPY pyproject.toml ./
 COPY src/ ./src/
 RUN pip install --no-cache-dir . && \
-    pip install --no-cache-dir fastapi uvicorn aiosqlite
+    pip install --no-cache-dir fastapi uvicorn aiosqlite httpx
 
 # Copy web backend.
 COPY web/ ./web/
