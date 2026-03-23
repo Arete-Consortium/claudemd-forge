@@ -25,3 +25,4 @@ Thumbs.db
 output/
 .vercel
 web/frontend/node_modules/
+.venv-new/

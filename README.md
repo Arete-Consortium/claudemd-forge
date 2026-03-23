@@ -171,6 +171,10 @@ ruff check src/ tests/
 ruff format src/ tests/
 ```
 
+## Community
+
+[Discord](https://discord.gg/fdzQkrt8) — Join the community
+
 ## License
 
 MIT
