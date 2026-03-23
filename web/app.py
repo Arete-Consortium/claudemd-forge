@@ -309,16 +309,15 @@ async def _fetch_all_repos(token: str) -> list[dict[str, Any]]:
 
 
 @app.get("/api/auth/github")
-async def github_login(request: Request) -> dict[str, str]:
-    """Return the GitHub OAuth authorize URL with redirect back to frontend."""
+async def github_login() -> dict[str, str]:
+    """Return the GitHub OAuth authorize URL."""
     if not GITHUB_CLIENT_ID:
         raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
-    # Redirect back to frontend root so SPA handles the code exchange
-    origin = str(request.base_url).rstrip("/")
+    redirect_uri = os.environ.get("OAUTH_REDIRECT_URI", "https://anchormd.dev/")
     url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
-        f"&redirect_uri={origin}/"
+        f"&redirect_uri={redirect_uri}"
         f"&scope=repo,read:user"
     )
     return {"url": url}
