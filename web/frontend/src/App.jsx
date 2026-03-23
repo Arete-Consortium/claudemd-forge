@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "./AuthContext";
-import { getGitHubLoginUrl, createDeepScanCheckout, getDeepScanReport, getFixReport } from "./api";
+import { getGitHubLoginUrl, createDeepScanCheckout, getDeepScanReport, getFixReport, pushPR } from "./api";
 import ReposPage from "./ReposPage";
 import AdminPage from "./AdminPage";
 
@@ -261,6 +261,8 @@ export default function App() {
   const [deepReport, setDeepReport] = useState(null);
   const [deepLoading, setDeepLoading] = useState(false);
   const [fixDownloading, setFixDownloading] = useState(false);
+  const [prPushing, setPrPushing] = useState(false);
+  const [prUrl, setPrUrl] = useState(null);
 
   // Check for ?deep_scan= parameter on load.
   useEffect(() => {
@@ -399,6 +401,20 @@ export default function App() {
       setError(err.message);
     } finally {
       setFixDownloading(false);
+    }
+  };
+
+  const handlePushPR = async () => {
+    if (!result?.scan_id) return;
+    setPrPushing(true);
+    setPrUrl(null);
+    try {
+      const data = await pushPR(result.scan_id);
+      setPrUrl(data.pr_url);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPrPushing(false);
     }
   };
 
@@ -680,6 +696,29 @@ export default function App() {
                     >
                       {copied ? "Copied!" : "Copy"}
                     </button>
+                    {user && (
+                      prUrl ? (
+                        <a
+                          href={prUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm px-4 py-1.5 rounded-md font-medium bg-green-600
+                                     hover:bg-green-700 text-white transition-colors"
+                        >
+                          View PR
+                        </a>
+                      ) : (
+                        <button
+                          onClick={handlePushPR}
+                          disabled={prPushing}
+                          className="text-sm px-4 py-1.5 rounded-md font-medium transition-colors
+                                     bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700
+                                     disabled:text-gray-500 text-white"
+                        >
+                          {prPushing ? "Creating PR..." : "Push to Repo"}
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
 

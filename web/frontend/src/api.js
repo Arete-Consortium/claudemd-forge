@@ -108,3 +108,7 @@ export async function getDeepScanReport(scanId) {
 export async function getFixReport(scanId) {
   return apiGet(`/api/scan/${scanId}/fix-report`);
 }
+
+export async function pushPR(scanId, options = {}) {
+  return apiPost(`/api/scan/${scanId}/push-pr`, options);
+}

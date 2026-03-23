@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
-import { listRepos, scanRepo, getScan, scanAll, getBatchStatus, getFixReport } from "./api";
+import { listRepos, scanRepo, getScan, scanAll, getBatchStatus, getFixReport, pushPR } from "./api";
 import ReactMarkdown from "react-markdown";
 
 const POLL_INTERVAL = 2000;
@@ -59,6 +59,8 @@ export default function ReposPage() {
   const [showRaw, setShowRaw] = useState(false);
   const [fixDownloading, setFixDownloading] = useState(false);
   const [skippedCount, setSkippedCount] = useState(0);
+  const [prPushing, setPrPushing] = useState(false);
+  const [prUrl, setPrUrl] = useState(null);
 
   useEffect(() => {
     listRepos()
@@ -202,6 +204,20 @@ export default function ReposPage() {
     );
   }
 
+  const handlePushPR = async (scan) => {
+    if (!scan?.scan_id) return;
+    setPrPushing(true);
+    setPrUrl(null);
+    try {
+      const data = await pushPR(scan.scan_id);
+      setPrUrl(data.pr_url);
+    } catch {
+      // Silent fail.
+    } finally {
+      setPrPushing(false);
+    }
+  };
+
   const handleDownloadFixReport = async (scan) => {
     if (!scan?.scan_id) return;
     setFixDownloading(true);
@@ -270,6 +286,27 @@ export default function ReposPage() {
             >
               Copy
             </button>
+            {prUrl ? (
+              <a
+                href={prUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm px-4 py-1.5 rounded-md font-medium bg-green-600
+                           hover:bg-green-700 text-white transition-colors"
+              >
+                View PR
+              </a>
+            ) : (
+              <button
+                onClick={() => handlePushPR(selectedScan)}
+                disabled={prPushing}
+                className="text-sm px-4 py-1.5 rounded-md font-medium transition-colors
+                           bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700
+                           disabled:text-gray-500 text-white"
+              >
+                {prPushing ? "Creating PR..." : "Push to Repo"}
+              </button>
+            )}
           </div>
         </div>
         <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
