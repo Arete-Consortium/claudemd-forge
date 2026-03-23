@@ -740,17 +740,8 @@ export default function App() {
 
       {/* Footer */}
       <footer className="border-t border-gray-800 py-6 mt-auto">
-        <div className="max-w-5xl mx-auto px-4 flex items-center justify-between text-gray-500 text-sm">
-          <span>anchormd &copy; {new Date().getFullYear()}</span>
-          <div className="flex gap-4">
-            <a
-              href="https://pypi.org/project/anchormd/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-gray-300 transition-colors"
-            >
-              PyPI
-            </a>
+        <div className="max-w-5xl mx-auto px-4 text-center text-gray-500 text-sm">
+          <div className="flex items-center justify-center gap-4 mb-2">
             <a
               href="https://github.com/Arete-Consortium/anchormd"
               target="_blank"
@@ -759,7 +750,46 @@ export default function App() {
             >
               GitHub
             </a>
+            <span className="text-gray-700">&middot;</span>
+            <a
+              href="https://pypi.org/project/anchormd/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-300 transition-colors"
+            >
+              PyPI
+            </a>
+            <span className="text-gray-700">&middot;</span>
+            <a
+              href="https://github.com/Arete-Consortium/anchormd/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-300 transition-colors"
+            >
+              Issues
+            </a>
+            <span className="text-gray-700">&middot;</span>
+            <a
+              href="https://discord.gg/fdzQkrt8"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-300 transition-colors"
+            >
+              Discord
+            </a>
           </div>
+          <span>
+            Built by{" "}
+            <a
+              href="https://aretedriver.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-300 transition-colors"
+            >
+              AreteDriver
+            </a>
+            {" "}&middot; anchormd &copy; {new Date().getFullYear()}
+          </span>
         </div>
       </footer>
     </div>

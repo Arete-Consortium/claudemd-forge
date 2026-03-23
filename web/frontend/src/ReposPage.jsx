@@ -58,6 +58,7 @@ export default function ReposPage() {
   const [selectedScan, setSelectedScan] = useState(null);
   const [showRaw, setShowRaw] = useState(false);
   const [fixDownloading, setFixDownloading] = useState(false);
+  const [skippedCount, setSkippedCount] = useState(0);
 
   useEffect(() => {
     listRepos()
@@ -117,12 +118,16 @@ export default function ReposPage() {
       const data = await scanAll(user.username);
       setBatchId(data.batch_id);
       localStorage.setItem("anchormd_batch_id", data.batch_id);
-      // Mark all as scanning.
+      // Mark all as scanning initially.
       const statuses = {};
       repos.forEach((r) => {
         statuses[r.html_url] = "scanning";
       });
       setScanStatuses(statuses);
+      // Show skip info immediately if available.
+      if (data.skipped > 0) {
+        setSkippedCount(data.skipped);
+      }
       // Poll batch status.
       pollBatch(data.batch_id);
     } catch (err) {
@@ -292,6 +297,9 @@ export default function ReposPage() {
           {batchRunning && batchStatus && (
             <span className="text-gray-400 text-sm">
               {batchStatus.completed}/{batchStatus.repo_count} complete
+              {skippedCount > 0 && (
+                <span className="text-anchor-400 ml-1">({skippedCount} cached)</span>
+              )}
             </span>
           )}
           <button
@@ -337,12 +345,17 @@ export default function ReposPage() {
             errorReasons[reason] = (errorReasons[reason] || 0) + 1;
           }
         });
-        if (errors === 0) return null;
+        if (errors === 0 && skippedCount === 0) return null;
         return (
           <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <span className="text-green-400">{completed} scored</span>
-              <span className="text-red-400">{errors} failed</span>
+              {skippedCount > 0 && (
+                <span className="text-anchor-400">{skippedCount} cached (100%, no changes)</span>
+              )}
+              {errors > 0 && (
+                <span className="text-red-400">{errors} failed</span>
+              )}
               {Object.entries(errorReasons).length > 0 && (
                 <span className="text-gray-500">
                   ({Object.entries(errorReasons).map(([k, v]) => `${k}: ${v}`).join(", ")})

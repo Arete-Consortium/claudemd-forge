@@ -481,6 +481,7 @@ async def list_repos(
             "language": r.get("language"),
             "stargazers_count": r.get("stargazers_count", 0),
             "updated_at": r.get("updated_at"),
+            "pushed_at": r.get("pushed_at"),
             "html_url": r["html_url"],
         }
         for r in raw_repos
@@ -573,7 +574,13 @@ async def scan_all(
     background_tasks: BackgroundTasks,
     user: dict[str, Any] = Depends(_require_user),
 ) -> dict[str, Any]:
-    """Queue scans for all repos belonging to the authenticated user."""
+    """Queue scans for all repos belonging to the authenticated user.
+
+    Repos with a previous score of 100 that haven't been pushed to since the
+    last scan are skipped and their cached result is reused.
+    """
+    import json as _json
+
     token = user["access_token"]
     repos = await _fetch_all_repos(token)
 
@@ -584,15 +591,80 @@ async def scan_all(
     now_ts = time.time()
     now_iso = datetime.now(UTC).isoformat()
 
+    # Look up previous best scan per repo URL to detect cacheable 100s.
+    conn = _get_db()
+    try:
+        # Get the most recent complete scan per repo_url for this user.
+        cached_rows = conn.execute(
+            """
+            SELECT repo_url, scan_id, score, content, files_scanned, languages,
+                   completed_at
+            FROM scans
+            WHERE user_id = ? AND status = 'complete' AND score = 100
+            ORDER BY completed_at DESC
+            """,
+            (user["id"],),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    # Build lookup: repo_url -> best cached scan (first seen = most recent).
+    cached_by_url: dict[str, dict[str, Any]] = {}
+    for row in cached_rows:
+        rd = dict(row)
+        if rd["repo_url"] not in cached_by_url:
+            cached_by_url[rd["repo_url"]] = rd
+
+    # Partition repos into skip (cached 100, no new pushes) vs scan.
+    to_scan: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+
+    for repo in repos:
+        url = repo["html_url"]
+        cached = cached_by_url.get(url)
+        if cached and cached.get("completed_at"):
+            pushed_at = repo.get("pushed_at", "")
+            completed_at = cached["completed_at"]
+            # Both are ISO 8601 strings — lexicographic comparison works.
+            if pushed_at and completed_at and pushed_at <= completed_at:
+                skipped.append(repo)
+                continue
+        to_scan.append(repo)
+
+    # Total count includes skipped (they appear as instant completions).
+    total_count = len(repos)
+    skipped_count = len(skipped)
+
     conn = _get_db()
     try:
         conn.execute(
             "INSERT INTO scan_batches (id, user_id, repo_count, completed, created_at) "
-            "VALUES (?, ?, ?, 0, ?)",
-            (batch_id, user["id"], len(repos), now_ts),
+            "VALUES (?, ?, ?, ?, ?)",
+            (batch_id, user["id"], total_count, skipped_count, now_ts),
         )
+
+        # Insert cached results as already-complete scans.
+        for repo in skipped:
+            url = repo["html_url"]
+            cached = cached_by_url[url]
+            scan_id = _make_scan_id(url)
+            conn.execute(
+                """
+                INSERT INTO scans (scan_id, repo_url, status, score, content,
+                    files_scanned, languages, created_at, completed_at,
+                    user_id, batch_id)
+                VALUES (?, ?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    scan_id, url, cached["score"], cached["content"],
+                    cached["files_scanned"], cached["languages"],
+                    now_iso, now_iso, user["id"], batch_id,
+                ),
+            )
+
+        # Insert pending scans for repos that need re-scanning.
         scan_ids = []
-        for repo in repos:
+        for repo in to_scan:
             scan_id = _make_scan_id(repo["html_url"])
             scan_ids.append(scan_id)
             conn.execute(
@@ -616,13 +688,19 @@ async def scan_all(
                 await loop.run_in_executor(None, _run_scan, sid, url, token, batch_id)
 
         tasks = [
-            _scan_one(sid, repo["html_url"]) for sid, repo in zip(scan_ids, repos, strict=True)
+            _scan_one(sid, repo["html_url"]) for sid, repo in zip(scan_ids, to_scan, strict=True)
         ]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    background_tasks.add_task(_run_batch)
+    if to_scan:
+        background_tasks.add_task(_run_batch)
 
-    return {"batch_id": batch_id, "repo_count": len(repos)}
+    return {
+        "batch_id": batch_id,
+        "repo_count": total_count,
+        "skipped": skipped_count,
+        "scanning": len(to_scan),
+    }
 
 
 @app.get("/api/scan-batch/{batch_id}")
