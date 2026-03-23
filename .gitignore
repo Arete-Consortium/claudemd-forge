@@ -23,3 +23,5 @@ Thumbs.db
 *.iml
 .env*
 output/
+.vercel
+web/frontend/node_modules/
