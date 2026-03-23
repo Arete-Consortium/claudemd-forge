@@ -121,7 +121,10 @@ export default function App() {
       if (data.status === "complete") {
         setResult(data);
         setLoading(false);
+        window.history.replaceState({}, "", `?scan=${data.scan_id}`);
       } else {
+        // Persist scan ID to URL so refresh can recover
+        window.history.replaceState({}, "", `?scan=${data.scan_id}`);
         pollForResult(data.scan_id);
       }
     } catch (err) {

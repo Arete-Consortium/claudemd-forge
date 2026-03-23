@@ -63,7 +63,15 @@ export default function ReposPage() {
       .then((data) => setRepos(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+
+    // Recover active batch on refresh
+    const savedBatch = localStorage.getItem("anchormd_batch_id");
+    if (savedBatch) {
+      setBatchId(savedBatch);
+      setBatchRunning(true);
+      pollBatch(savedBatch);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const pollScan = useCallback(async (scanId, repoUrl) => {
     for (let i = 0; i < MAX_POLLS; i++) {
@@ -107,6 +115,7 @@ export default function ReposPage() {
     try {
       const data = await scanAll(user.username);
       setBatchId(data.batch_id);
+      localStorage.setItem("anchormd_batch_id", data.batch_id);
       // Mark all as scanning.
       const statuses = {};
       repos.forEach((r) => {
@@ -141,6 +150,7 @@ export default function ReposPage() {
 
         if (data.completed >= data.repo_count) {
           setBatchRunning(false);
+          localStorage.removeItem("anchormd_batch_id");
           return;
         }
       } catch {
