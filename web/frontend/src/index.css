@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Markdown output styling */
+.markdown-output h1 {
+  @apply text-2xl font-bold text-white mb-4 mt-6;
+}
+.markdown-output h2 {
+  @apply text-xl font-semibold text-anchor-300 mb-3 mt-5;
+}
+.markdown-output h3 {
+  @apply text-lg font-medium text-gray-200 mb-2 mt-4;
+}
+.markdown-output p {
+  @apply text-gray-300 mb-3 leading-relaxed;
+}
+.markdown-output ul {
+  @apply list-disc list-inside text-gray-300 mb-3 space-y-1;
+}
+.markdown-output ol {
+  @apply list-decimal list-inside text-gray-300 mb-3 space-y-1;
+}
+.markdown-output code {
+  @apply bg-gray-800 text-anchor-300 px-1.5 py-0.5 rounded text-sm font-mono;
+}
+.markdown-output pre {
+  @apply bg-gray-900 border border-gray-700 rounded-lg p-4 mb-4 overflow-x-auto;
+}
+.markdown-output pre code {
+  @apply bg-transparent p-0 text-gray-300;
+}
+.markdown-output table {
+  @apply w-full border-collapse mb-4;
+}
+.markdown-output th {
+  @apply text-left bg-gray-800 border border-gray-700 px-3 py-2 text-sm font-semibold text-gray-200;
+}
+.markdown-output td {
+  @apply border border-gray-700 px-3 py-2 text-sm text-gray-300;
+}
+.markdown-output strong {
+  @apply text-gray-100 font-semibold;
+}
+.markdown-output hr {
+  @apply border-gray-700 my-6;
+}
+.markdown-output blockquote {
+  @apply border-l-4 border-anchor-500 pl-4 text-gray-400 italic my-4;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-900;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-700 rounded;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-600;
+}
