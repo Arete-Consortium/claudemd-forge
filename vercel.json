@@ -1,8 +1,10 @@
 {
-  "buildCommand": null,
-  "outputDirectory": "docs",
-  "framework": null,
+  "framework": "vite",
+  "installCommand": "cd web/frontend && npm install",
+  "buildCommand": "cd web/frontend && npm run build",
+  "outputDirectory": "web/frontend/dist",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://anchormd-web.fly.dev/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
