@@ -448,3 +448,73 @@ def get_upgrade_message(feature: str) -> str:
         f"Upgrade at: https://anchormd.dev/pro\n"
         f"Set your key via: export {_ENV_LICENSE_KEY}=ANMD-XXXX-XXXX-XXXX"
     )
+
+
+def check_scan_quota(scan_type: str = "deep_scan") -> dict | None:
+    """Check remaining scan quota against the license server.
+
+    Returns dict with {used, limit, remaining, allowed, period} on success,
+    None if server is unavailable or no key configured.
+    """
+    key = _find_license_key()
+    if key is None:
+        return {"used": 0, "limit": 0, "remaining": 0, "allowed": scan_type == "audit", "period": ""}
+
+    server_url = _get_license_server_url()
+    if not server_url:
+        return None  # No server configured — can't enforce quotas
+
+    try:
+        import httpx
+    except ImportError:
+        return None
+
+    try:
+        resp = httpx.post(
+            f"{server_url}/v1/usage/check",
+            json={"license_key": key, "scan_type": scan_type},
+            timeout=5.0,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        logger.debug("Usage check failed", exc_info=True)
+
+    return None  # Server unavailable — fail open
+
+
+def record_scan(scan_type: str = "deep_scan", repo_fingerprint: str | None = None) -> dict | None:
+    """Record a scan against the license server quota.
+
+    Returns dict with {used, limit, remaining, allowed, period} on success,
+    None if server is unavailable.
+    """
+    key = _find_license_key()
+    if key is None:
+        return None
+
+    server_url = _get_license_server_url()
+    if not server_url:
+        return None
+
+    try:
+        import httpx
+    except ImportError:
+        return None
+
+    try:
+        resp = httpx.post(
+            f"{server_url}/v1/usage",
+            json={
+                "license_key": key,
+                "scan_type": scan_type,
+                "repo_fingerprint": repo_fingerprint,
+            },
+            timeout=5.0,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+    except Exception:
+        logger.debug("Usage record failed", exc_info=True)
+
+    return None

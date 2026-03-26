@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import hashlib
 import json
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from rich.table import Table
 from anchormd import __version__
 from anchormd.analyzers import run_all
 from anchormd.exceptions import ForgeError
-from anchormd.gates import check_preset_access, require_pro
+from anchormd.gates import check_preset_access, record_scan_usage, require_pro, require_quota
 from anchormd.generators.composer import DocumentComposer
 from anchormd.licensing import (
     PRO_PRESETS,
@@ -536,6 +537,7 @@ def stats(
 
 @app.command(name="tech-debt")
 @require_pro("tech_debt")
+@require_quota("deep_scan")
 def tech_debt(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
     output_json: bool = typer.Option(  # noqa: B008
@@ -661,6 +663,8 @@ def tech_debt(
                                 f"Use -v to show all.[/dim]"
                             )
 
+        record_scan_usage("deep_scan", hashlib.sha256(str(root).encode()).hexdigest()[:16])
+
         if score < fail_below:
             raise typer.Exit(2)
 
@@ -671,6 +675,7 @@ def tech_debt(
 
 @app.command(name="github-health")
 @require_pro("github_health")
+@require_quota("deep_scan")
 def github_health(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
     output_json: bool = typer.Option(  # noqa: B008
@@ -773,6 +778,8 @@ def github_health(
                     f"`{findings.get('default_branch', 'main')}`"
                 )
 
+        record_scan_usage("deep_scan", hashlib.sha256(str(root).encode()).hexdigest()[:16])
+
     except ForgeError as e:
         console.print(Panel(str(e), title="Error", border_style="red"))
         raise typer.Exit(1) from e
@@ -780,6 +787,7 @@ def github_health(
 
 @app.command()
 @require_pro("cleanup")
+@require_quota("deep_scan")
 def cleanup(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008
     execute: bool = typer.Option(  # noqa: B008
@@ -930,6 +938,8 @@ def cleanup(
                 for action in plan.actions:
                     if action.error:
                         console.print(f"  {action.target}: {action.error}")
+
+        record_scan_usage("deep_scan", hashlib.sha256(str(root).encode()).hexdigest()[:16])
 
     except ForgeError as e:
         console.print(Panel(str(e), title="Error", border_style="red"))

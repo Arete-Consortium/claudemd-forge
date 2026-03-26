@@ -13,11 +13,13 @@ from rich.console import Console
 from anchormd.licensing import (
     PRO_PRESETS,
     Tier,
+    check_scan_quota,
     get_license_info,
     get_upgrade_message,
     has_feature,
     has_preset_access,
     is_known_preset,
+    record_scan,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,6 +49,45 @@ def require_pro(feature: str) -> Callable[[F], F]:
         return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+def require_quota(scan_type: str = "deep_scan") -> Callable[[F], F]:
+    """Decorator that checks scan quota before running a command.
+
+    If the user has exceeded their tier's scan limit, prints a message
+    and exits. Fails open if the server is unavailable.
+    """
+
+    def decorator(func: F) -> F:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            quota = check_scan_quota(scan_type)
+            if quota is not None and not quota.get("allowed", True):
+                console = Console()
+                used = quota.get("used", 0)
+                limit = quota.get("limit", 0)
+                period = quota.get("period", "this month")
+                console.print(
+                    f"[yellow]Scan quota reached: {used}/{limit} {scan_type}s "
+                    f"used in {period}.[/yellow]"
+                )
+                console.print(
+                    "[dim]Upgrade your plan or wait for the next billing period: "
+                    "https://anchormd.dev/pro[/dim]"
+                )
+                raise typer.Exit(1)
+            return func(*args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator
+
+
+def record_scan_usage(scan_type: str = "deep_scan", repo_fingerprint: str | None = None) -> None:
+    """Record a scan after successful execution. Fire-and-forget."""
+    result = record_scan(scan_type, repo_fingerprint)
+    if result and not result.get("allowed", True):
+        logger.warning("Scan recorded but quota now exhausted: %s", result)
 
 
 def check_preset_access(preset_name: str) -> None:
