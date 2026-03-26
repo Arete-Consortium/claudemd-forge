@@ -37,6 +37,7 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 DEEP_SCAN_PRICE_CENTS = 2900  # $29.00 one-time
 SITE_URL = os.environ.get("SITE_URL", "https://anchormd.dev")
+LICENSE_SERVER_URL = os.environ.get("ANCHORMD_LICENSE_SERVER", "")
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -488,6 +489,78 @@ async def list_repos(
     ]
 
 
+# --- Quota Helpers ---
+
+
+async def _check_web_quota(
+    scan_type: str, license_key: str | None = None, repo_fingerprint: str | None = None
+) -> dict | None:
+    """Check scan quota against the license server. Returns usage dict or None."""
+    if not LICENSE_SERVER_URL:
+        return None  # No server = no enforcement
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                f"{LICENSE_SERVER_URL}/v1/usage/check",
+                json={
+                    "license_key": license_key or "",
+                    "scan_type": scan_type,
+                },
+                timeout=5.0,
+            )
+            if resp.status_code == 200:
+                return resp.json()
+    except Exception:
+        logger.debug("Quota check failed", exc_info=True)
+    return None
+
+
+async def _record_web_usage(
+    scan_type: str, license_key: str | None = None, repo_fingerprint: str | None = None
+) -> None:
+    """Record a scan against the license server. Fire-and-forget."""
+    if not LICENSE_SERVER_URL:
+        return
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"{LICENSE_SERVER_URL}/v1/usage",
+                json={
+                    "license_key": license_key or "",
+                    "scan_type": scan_type,
+                    "repo_fingerprint": repo_fingerprint,
+                },
+                timeout=5.0,
+            )
+    except Exception:
+        logger.debug("Usage record failed", exc_info=True)
+
+
+def _repo_fingerprint(repo_url: str) -> str:
+    """Generate a stable fingerprint for a repo URL."""
+    return hashlib.sha256(repo_url.lower().strip().encode()).hexdigest()[:16]
+
+
+# --- Free Scan Caching ---
+
+
+def _get_cached_free_scan(repo_url: str) -> dict | None:
+    """Return a cached free scan for a repo if one exists and completed."""
+    conn = _get_db()
+    try:
+        row = conn.execute(
+            "SELECT scan_id, status, content, score FROM scans "
+            "WHERE repo_url = ? AND scan_type = 'free' AND status = 'complete' "
+            "ORDER BY created_at DESC LIMIT 1",
+            (repo_url,),
+        ).fetchone()
+        if row:
+            return {"scan_id": row["scan_id"], "status": row["status"], "cached": True}
+    finally:
+        conn.close()
+    return None
+
+
 # --- API Routes: Scan ---
 
 
@@ -501,6 +574,16 @@ async def create_scan(
     user = await _get_current_user(req)
     user_id = user["id"] if user else None
     token = user["access_token"] if user else None
+
+    # Return cached result for repeat free scans of the same repo
+    cached = _get_cached_free_scan(request.repo_url)
+    if cached:
+        return ScanResponse(
+            scan_id=cached["scan_id"],
+            repo_url=request.repo_url,
+            status="complete",
+            created_at="",
+        )
 
     scan_id = _make_scan_id(request.repo_url)
     now = datetime.now(UTC).isoformat()
@@ -959,6 +1042,12 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks) ->
 
                 # Trigger deep scan in background.
                 background_tasks.add_task(_run_deep_scan, scan_id, repo_url)
+
+                # Record usage against license server (fire-and-forget)
+                email = session.get("customer_email", "")
+                background_tasks.add_task(
+                    _record_web_usage, "deep_scan", email, _repo_fingerprint(repo_url)
+                )
 
     return {"status": "ok"}
 
