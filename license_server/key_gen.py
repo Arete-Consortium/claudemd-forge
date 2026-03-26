@@ -18,6 +18,7 @@ PRODUCT_KEY_CONFIG: dict[str, tuple[str, str]] = {
     "ai-spend": ("ASPD", "ai-spend-v1"),
     "promptctl": ("PCTL", "promptctl-v1"),
     "context-hygiene": ("CTHG", "context-hygiene-v1"),
+    "auditchain": ("ACHN", "auditchain-v1"),
 }
 
 _DEFAULT_PRODUCT = "anchormd"

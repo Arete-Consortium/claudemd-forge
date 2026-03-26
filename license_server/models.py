@@ -13,6 +13,7 @@ VALID_PRODUCTS = frozenset(
         "ai-spend",
         "promptctl",
         "context-hygiene",
+        "auditchain",
     }
 )
 
