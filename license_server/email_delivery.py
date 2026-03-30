@@ -121,6 +121,68 @@ def send_bundle_email(
         return False
 
 
+def send_aicards_email(
+    email: str,
+    pack_type: str,
+    success: bool = True,
+    cards: list[dict] | None = None,
+) -> bool:
+    """Send an AI Cards pack purchase confirmation email.
+
+    Returns True on success, False on failure (never raises).
+    """
+    smtp_user = get_smtp_user()
+    smtp_password = get_smtp_password()
+
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured — skipping aicards email to %s", email)
+        return False
+
+    pack_label = pack_type.upper().replace("EXE", ".EXE").replace("SYS", ".SYS")
+    msg = EmailMessage()
+    msg["From"] = get_smtp_from()
+    msg["To"] = email
+
+    if success and cards:
+        msg["Subject"] = f"AI Cards — Your {pack_label} pack has been minted!"
+        card_lines = []
+        for c in cards:
+            name = c.get("card_name", c.get("card_id", "Unknown"))
+            rarity = c.get("rarity", "")
+            card_lines.append(f"    {rarity:10s}  {name}")
+        body = (
+            f"Your {pack_label} pack ({len(cards)} cards) has been minted on Sui!\n\n"
+            "Cards received:\n"
+            + "\n".join(card_lines)
+            + "\n\n"
+            "View your collection at https://aicards.fun\n\n"
+            "— AI Cards TCG"
+        )
+    else:
+        msg["Subject"] = f"AI Cards — Issue with your {pack_label} pack purchase"
+        body = (
+            f"We received your payment for a {pack_label} pack, but there was an "
+            "issue minting your cards.\n\n"
+            "This usually means we couldn't find your Sui wallet address. "
+            "Please reply to this email with your Sui address (0x...) and we'll "
+            "mint your cards manually.\n\n"
+            "— AI Cards TCG"
+        )
+
+    msg.set_content(body)
+
+    try:
+        with smtplib.SMTP(get_smtp_host(), get_smtp_port(), timeout=10) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+        logger.info("Aicards email sent to %s (pack=%s, success=%s)", email, pack_type, success)
+        return True
+    except Exception:
+        logger.exception("Failed to email aicards confirmation to %s", email)
+        return False
+
+
 def _build_bundle_body(
     licenses: list[tuple[str, str]], tier: str, bundle_id: str | None = None
 ) -> str:

@@ -19,8 +19,11 @@ import json
 import logging
 import uuid
 
+import httpx
+
+from license_server.config import get_aicards_mint_api
 from license_server.database import get_connection
-from license_server.email_delivery import send_bundle_email, send_license_email
+from license_server.email_delivery import send_aicards_email, send_bundle_email, send_license_email
 from license_server.key_gen import generate_key, hash_key, mask_key, validate_key_checksum
 
 logger = logging.getLogger(__name__)
@@ -100,6 +103,10 @@ def handle_checkout_completed(event: dict) -> dict:
     product = metadata.get("product", "anchormd")
     tier = metadata.get("tier", "pro")
 
+    # AI Cards pack purchase — mint NFTs instead of generating license keys
+    if product == "aicards-pack":
+        return _handle_aicards_pack(session, metadata, customer_email, event.get("id"))
+
     conn = get_connection()
 
     # Bundle handling: generate a key for each product
@@ -166,6 +173,83 @@ def handle_checkout_completed(event: dict) -> dict:
         "tier": tier,
         "stripe_customer_id": customer_id,
         "stripe_subscription_id": subscription_id,
+    }
+
+
+def _handle_aicards_pack(
+    session: dict,
+    metadata: dict,
+    customer_email: str,
+    event_id: str | None,
+) -> dict:
+    """Fulfill an AI Cards pack purchase by calling the minting API.
+
+    Reads pack_type from metadata and sui_address from client_reference_id.
+    """
+    pack_type = metadata.get("pack_type", "jobless")
+    sui_address = session.get("client_reference_id", "")
+
+    if not sui_address or not sui_address.startswith("0x"):
+        logger.error(
+            "aicards-pack checkout missing Sui address (client_reference_id): %s",
+            event_id,
+        )
+        # Still acknowledge webhook — email customer to provide address
+        send_aicards_email(customer_email, pack_type, success=False, cards=[])
+        return {
+            "error": "missing_sui_address",
+            "event_id": event_id,
+            "email": customer_email,
+            "pack_type": pack_type,
+        }
+
+    mint_api = get_aicards_mint_api()
+    logger.info(
+        "Minting aicards pack: %s → %s (email=%s)",
+        pack_type,
+        sui_address[:10],
+        customer_email,
+    )
+
+    try:
+        resp = httpx.post(
+            f"{mint_api}/mint/pack",
+            json={"sui_address": sui_address, "pack_type": pack_type},
+            timeout=30.0,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception:
+        logger.exception("Minting API call failed for %s (%s)", customer_email, pack_type)
+        send_aicards_email(customer_email, pack_type, success=False, cards=[])
+        return {
+            "error": "mint_failed",
+            "event_id": event_id,
+            "email": customer_email,
+            "pack_type": pack_type,
+            "sui_address": sui_address[:10] + "...",
+        }
+
+    cards = data.get("cards", [])
+    minted = [c for c in cards if c.get("transaction")]
+
+    logger.info(
+        "Minted %d cards for %s (pack=%s, addr=%s)",
+        len(minted),
+        customer_email,
+        pack_type,
+        sui_address[:10],
+    )
+
+    send_aicards_email(customer_email, pack_type, success=True, cards=minted)
+
+    return {
+        "product": "aicards-pack",
+        "pack_type": pack_type,
+        "email": customer_email,
+        "sui_address": sui_address[:10] + "...",
+        "cards_minted": len(minted),
+        "event_id": event_id,
     }
 
 

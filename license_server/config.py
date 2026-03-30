@@ -54,3 +54,8 @@ def get_smtp_password() -> str | None:
 def get_smtp_from() -> str:
     """Return the From: address for outbound email."""
     return os.environ.get("ANMD_SMTP_FROM", "noreply@anchormd.dev")
+
+
+def get_aicards_mint_api() -> str:
+    """Return the AI Cards minting API base URL."""
+    return os.environ.get("AICARDS_MINT_API", "https://aicards-mint.fly.dev")
