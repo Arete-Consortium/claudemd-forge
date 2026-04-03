@@ -7,7 +7,7 @@ name = "anchormd"
 version = "0.4.0"
 description = "Generate and audit AI agent context files — tech debt scanner, GitHub health, cleanup agent"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "BSL-1.1"}
 requires-python = ">=3.11"
 authors = [{name = "AreteDriver"}]
 keywords = ["ai", "coding-agent", "context-file", "tech-debt", "claude-code", "cursor", "windsurf"]
