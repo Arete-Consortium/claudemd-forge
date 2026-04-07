@@ -1611,8 +1611,11 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks) ->
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
     except ValueError as exc:
+        print(f"Stripe webhook: invalid payload: {exc}")
         raise HTTPException(status_code=400, detail="Invalid payload") from exc
     except stripe.SignatureVerificationError as exc:
+        print(f"Stripe webhook: sig verify failed: {exc}")
+        raise HTTPException(status_code=400, detail="Invalid signature") from exc
         raise HTTPException(status_code=400, detail="Invalid signature") from exc
 
     # Parse raw payload as plain dict to avoid Stripe object access quirks
