@@ -1,0 +1,26 @@
+{
+  "name": "anchormd",
+  "description": "Generate and audit CLAUDE.md files for AI coding agents. Scans codebases to detect languages, frameworks, testing patterns, and conventions, then generates production-grade context files with coding standards, anti-patterns, and project-specific instructions.",
+  "author": {
+    "name": "AreteDriver",
+    "email": "aretedriver@users.noreply.github.com"
+  },
+  "repository": "https://github.com/AreteDriver/anchormd",
+  "license": "MIT",
+  "metadata": {
+    "version": "0.4.0",
+    "category": "code-quality"
+  },
+  "plugins": [
+    {
+      "name": "anchormd",
+      "description": "CLAUDE.md generation and auditing tools",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/anchormd-generate",
+        "./skills/anchormd-audit"
+      ]
+    }
+  ]
+}
