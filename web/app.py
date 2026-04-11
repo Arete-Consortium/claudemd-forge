@@ -1616,7 +1616,6 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks) ->
     except stripe.SignatureVerificationError as exc:
         print(f"Stripe webhook: sig verify failed: {exc}")
         raise HTTPException(status_code=400, detail="Invalid signature") from exc
-        raise HTTPException(status_code=400, detail="Invalid signature") from exc
 
     # Parse raw payload as plain dict to avoid Stripe object access quirks
     import json as _wh_json
