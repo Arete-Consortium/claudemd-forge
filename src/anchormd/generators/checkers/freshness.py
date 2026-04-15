@@ -22,18 +22,33 @@ class FreshnessChecker:
         for ref in path_refs:
             if " " in ref or ref.startswith(("pip", "npm", "cargo", "make", "git")):
                 continue
-            if (
-                "/" in ref
-                and ref not in all_existing
-                and ("." in ref.split("/")[-1] or ref.endswith("/"))
-            ):
-                findings.append(
-                    AuditFinding(
-                        severity="warning",
-                        category="freshness",
-                        message=(f"References path `{ref}` which doesn't exist in the project"),
-                        suggestion="Update or remove stale file references",
-                    )
+            if "/" not in ref:
+                continue
+            # Skip absolute/system paths — these are intentional references
+            # to OS resources (e.g. /dev/input/by-id/), not project files.
+            if ref.startswith("/"):
+                continue
+            last = ref.rstrip("/").split("/")[-1]
+            if "." not in last and not ref.endswith("/"):
+                continue
+
+            normalized = ref.rstrip("/")
+            if normalized in all_existing:
+                continue
+            # Prefix match: if ref looks like a directory, accept when any
+            # scanned path lives under it. Covers refs whose exact dir
+            # wasn't added (e.g. scanner skipped it) but children exist.
+            prefix = normalized + "/"
+            if any(p.startswith(prefix) for p in all_existing):
+                continue
+
+            findings.append(
+                AuditFinding(
+                    severity="warning",
+                    category="freshness",
+                    message=(f"References path `{ref}` which doesn't exist in the project"),
+                    suggestion="Update or remove stale file references",
                 )
+            )
 
         return findings

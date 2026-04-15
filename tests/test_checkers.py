@@ -195,3 +195,59 @@ class TestFreshnessChecker:
         content = "Main code in `src/app.py`.\n"
         findings = checker.check(content, structure)
         assert len(findings) == 0
+
+    def test_trailing_slash_directory_ref(self) -> None:
+        checker = FreshnessChecker()
+        structure = ProjectStructure(
+            root=Path("/tmp"),
+            files=[
+                FileInfo(
+                    path=Path("crates/device_registry/src/lib.rs"),
+                    extension=".rs",
+                    size_bytes=100,
+                    line_count=10,
+                )
+            ],
+            directories=[Path("crates"), Path("crates/device_registry")],
+            total_files=1,
+            total_lines=10,
+        )
+        content = "See `crates/` and `crates/device_registry/` for details.\n"
+        findings = checker.check(content, structure)
+        assert len(findings) == 0
+
+    def test_absolute_system_path_ignored(self) -> None:
+        checker = FreshnessChecker()
+        structure = ProjectStructure(
+            root=Path("/tmp"),
+            files=[],
+            directories=[],
+            total_files=0,
+            total_lines=0,
+        )
+        content = "Reads from `/dev/input/by-id/usb-foo-event-kbd`.\n"
+        findings = checker.check(content, structure)
+        assert len(findings) == 0
+
+    def test_directory_accepted_via_child_file(self) -> None:
+        checker = FreshnessChecker()
+        structure = ProjectStructure(
+            root=Path("/tmp"),
+            files=[
+                FileInfo(
+                    path=Path("packaging/systemd/razer-remap-daemon.service"),
+                    extension=".service",
+                    size_bytes=100,
+                    line_count=10,
+                )
+            ],
+            directories=[Path("packaging"), Path("packaging/systemd")],
+            total_files=1,
+            total_lines=10,
+        )
+        content = (
+            "Install via `packaging/systemd/razer-remap-daemon.service` "
+            "under `packaging/`.\n"
+        )
+        findings = checker.check(content, structure)
+        assert len(findings) == 0
