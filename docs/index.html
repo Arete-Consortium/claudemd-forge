@@ -289,7 +289,7 @@
 <br>
 <span class="output">      - uses: actions/checkout@v6</span>
 <br>
-<span class="output">      - uses: Arete-Consortium/anchormd@v0.4.0</span>
+<span class="output">      - uses: Arete-Consortium/anchormd@v0.5.0</span>
 <br>
 <span class="output">        with:</span>
 <br>
@@ -298,6 +298,37 @@
 <span class="output">          comment: true</span>
                 </div>
             </div>
+        </section>
+
+        <!-- Strict Mode -->
+        <section class="ci-section">
+            <h2>Strict Mode for CI &amp; Enterprise</h2>
+            <p class="subtitle">By default, anchormd fails open when the license server is unreachable — unlicensed users still get gated, but a Pro user keeps working through a network blip. In unattended pipelines, you may want the opposite: any validation failure hard-blocks the run.</p>
+            <div class="terminal">
+                <div class="terminal-header">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-body">
+<span class="comment"># Opt in: any validation failure exits with an error</span>
+<br>
+<span class="section">export</span> <span class="output">ANCHORMD_STRICT=1</span>
+<br>
+<span class="section">export</span> <span class="output">ANCHORMD_LICENSE=ANMD-XXXX-XXXX-XXXX</span>
+<br><br>
+<span class="comment"># Pro features now refuse to run on:</span>
+<br>
+<span class="comment">#   - missing or malformed license</span>
+<br>
+<span class="comment">#   - server unreachable with no valid local cache</span>
+<br>
+<span class="comment">#   - revoked or expired key</span>
+<br>
+<span class="output">anchormd tech-debt --source-only src/</span>
+                </div>
+            </div>
+            <p class="subtitle" style="margin-top: 24px;">Use strict mode in CI jobs, release pipelines, and enterprise deployments where a silent fallback to unlicensed behavior would be worse than a hard fail. Leave it unset for interactive developer use.</p>
         </section>
 
         <!-- Pricing -->
