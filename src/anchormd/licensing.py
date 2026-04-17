@@ -33,6 +33,7 @@ _LICENSE_LOCATIONS: list[str] = [
 _ENV_LICENSE_KEY = "ANCHORMD_LICENSE"
 _LEGACY_ENV_LICENSE_KEY = "CLAUDEMD_FORGE_LICENSE"
 _ENV_LICENSE_SERVER = "ANCHORMD_LICENSE_SERVER"
+_ENV_STRICT_MODE = "ANCHORMD_STRICT"
 
 # Cache settings.
 _CACHE_DIR = Path("~/.anchormd").expanduser()
@@ -253,6 +254,19 @@ def _get_license_server_url() -> str | None:
     return os.environ.get(_ENV_LICENSE_SERVER)
 
 
+def _is_strict_mode() -> bool:
+    """Check if strict licensing mode is active.
+
+    In strict mode, the client will not grant Pro tier when the license server
+    was never contacted (no URL configured or network failure with no cache).
+    Keys with a valid local checksum but no server verification return FREE
+    instead of fabricated Pro. Existing cached Pro info (even expired) is still
+    honored since it was previously server-verified.
+    """
+    val = os.environ.get(_ENV_STRICT_MODE, "").strip().lower()
+    return val in ("1", "true", "yes", "on")
+
+
 def _validate_with_server(key: str) -> LicenseInfo | None:
     """Call the license server to validate a key.
 
@@ -411,6 +425,16 @@ def get_license_info() -> LicenseInfo:
         return expired
 
     # Step 5: Fall back to local-only validation.
+    if _is_strict_mode():
+        logger.warning(
+            "Strict mode: refusing to grant Pro without server verification"
+        )
+        return LicenseInfo(
+            tier=Tier.FREE,
+            license_key=key,
+            valid=False,
+            metadata={"strict_refused": True},
+        )
     return LicenseInfo(
         tier=Tier.PRO,
         license_key=key,

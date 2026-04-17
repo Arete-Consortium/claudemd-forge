@@ -557,3 +557,90 @@ class TestServerValidationPipeline:
             info = get_license_info()
             assert info.tier == Tier.PRO
             assert info.valid is True
+
+
+class TestStrictMode:
+    """Strict mode refuses fail-open when the server never verified the key."""
+
+    def test_strict_refuses_local_only_pro(self) -> None:
+        with (
+            patch.dict(os.environ, {"ANCHORMD_STRICT": "1"}, clear=False),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._load_cache", return_value=None),
+            patch("anchormd.licensing._validate_with_server", return_value=None),
+            patch("anchormd.licensing._load_cache_expired", return_value=None),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.FREE
+            assert info.valid is False
+            assert info.metadata.get("strict_refused") is True
+
+    def test_strict_still_honors_fresh_cache(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": _VALID_KEY,
+            "tier": "pro",
+            "valid": True,
+            "email": "fresh@t.com",
+            "metadata": {},
+            "cached_at": time.time(),
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with (
+            patch.dict(os.environ, {"ANCHORMD_STRICT": "true"}, clear=False),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.valid is True
+
+    def test_strict_still_honors_expired_cache(self, tmp_path: Path) -> None:
+        cache_file = tmp_path / "cache.json"
+        payload = {
+            "key": _VALID_KEY,
+            "tier": "pro",
+            "valid": True,
+            "email": "expired@t.com",
+            "metadata": {},
+            "cached_at": time.time() - 100000,
+        }
+        cache_file.write_text(json.dumps(payload))
+
+        with (
+            patch.dict(os.environ, {"ANCHORMD_STRICT": "1"}, clear=False),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._CACHE_FILE", cache_file),
+            patch("anchormd.licensing._validate_with_server", return_value=None),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.metadata.get("degraded") is True
+
+    def test_strict_disabled_by_default(self) -> None:
+        env_without_strict = {
+            k: v for k, v in os.environ.items() if k != "ANCHORMD_STRICT"
+        }
+        with (
+            patch.dict(os.environ, env_without_strict, clear=True),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._load_cache", return_value=None),
+            patch("anchormd.licensing._validate_with_server", return_value=None),
+            patch("anchormd.licensing._load_cache_expired", return_value=None),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.valid is True
+
+    def test_strict_off_value_does_not_trigger(self) -> None:
+        with (
+            patch.dict(os.environ, {"ANCHORMD_STRICT": "0"}, clear=False),
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._load_cache", return_value=None),
+            patch("anchormd.licensing._validate_with_server", return_value=None),
+            patch("anchormd.licensing._load_cache_expired", return_value=None),
+        ):
+            info = get_license_info()
+            assert info.tier == Tier.PRO
+            assert info.valid is True

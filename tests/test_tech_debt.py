@@ -142,6 +142,89 @@ class TestGodFiles:
         )
 
 
+class TestSourceRoots:
+    """source_roots restricts analysis to given path prefixes."""
+
+    def _structure_with_mixed_files(self) -> ProjectStructure:
+        return _make_structure(
+            files=[
+                FileInfo(
+                    path=Path("src/monster.py"),
+                    extension=".py",
+                    size_bytes=50000,
+                    line_count=600,
+                ),
+                FileInfo(
+                    path=Path("archive-html/old_dump.html"),
+                    extension=".html",
+                    size_bytes=80000,
+                    line_count=1500,
+                ),
+                FileInfo(
+                    path=Path("topics/kabbalah/essay.py"),
+                    extension=".py",
+                    size_bytes=40000,
+                    line_count=800,
+                ),
+            ],
+            directories=[Path("src"), Path("archive-html"), Path("topics"), Path("tests")],
+        )
+
+    def test_source_roots_excludes_outside_paths(self) -> None:
+        structure = self._structure_with_mixed_files()
+        config = ForgeConfig(root_path=Path("/tmp/fake"), source_roots=["src"])
+        result = TechDebtAnalyzer().analyze(structure, config)
+        god_files = [
+            s for s in result.findings["signals"]
+            if s["category"] == "complexity" and "God file" in s["message"]
+        ]
+        assert len(god_files) == 1
+        assert god_files[0]["file"] == "src/monster.py"
+
+    def test_empty_source_roots_preserves_default_scan(self) -> None:
+        structure = self._structure_with_mixed_files()
+        config = ForgeConfig(root_path=Path("/tmp/fake"), source_roots=[])
+        result = TechDebtAnalyzer().analyze(structure, config)
+        god_files = [
+            s for s in result.findings["signals"]
+            if s["category"] == "complexity" and "God file" in s["message"]
+        ]
+        assert len(god_files) == 3
+
+    def test_multiple_source_roots_union(self) -> None:
+        structure = self._structure_with_mixed_files()
+        config = ForgeConfig(
+            root_path=Path("/tmp/fake"),
+            source_roots=["src", "topics/kabbalah"],
+        )
+        result = TechDebtAnalyzer().analyze(structure, config)
+        god_file_paths = {
+            s["file"] for s in result.findings["signals"]
+            if s["category"] == "complexity" and "God file" in s["message"]
+        }
+        assert god_file_paths == {"src/monster.py", "topics/kabbalah/essay.py"}
+
+    def test_source_roots_exact_match_for_single_file(self) -> None:
+        structure = _make_structure(
+            files=[
+                FileInfo(
+                    path=Path("main.py"),
+                    extension=".py",
+                    size_bytes=60000,
+                    line_count=700,
+                ),
+            ],
+            directories=[Path("tests")],
+        )
+        config = ForgeConfig(root_path=Path("/tmp/fake"), source_roots=["main.py"])
+        result = TechDebtAnalyzer().analyze(structure, config)
+        god_files = [
+            s for s in result.findings["signals"]
+            if s["category"] == "complexity" and "God file" in s["message"]
+        ]
+        assert len(god_files) == 1
+
+
 class TestDebtComments:
     def test_todo_detected(self, tmp_path: Path) -> None:
         src = tmp_path / "app.py"

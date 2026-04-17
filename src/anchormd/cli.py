@@ -966,6 +966,9 @@ def stats(
         ts.close()
 
 
+_SOURCE_DIR_CANDIDATES = ("src", "lib", "app", "packages", "pkg", "cmd", "internal")
+
+
 @app.command(name="tech-debt")
 @require_pro("tech_debt")
 @require_quota("deep_scan")
@@ -980,6 +983,31 @@ def tech_debt(
     fail_below: int = typer.Option(  # noqa: B008
         0, "--fail-below", help="Exit with code 2 if score is below this threshold"
     ),
+    source_only: bool = typer.Option(  # noqa: B008
+        False,
+        "--source-only",
+        help=(
+            "Restrict scan to standard source directories "
+            "(src, lib, app, packages, pkg, cmd, internal) if present. "
+            "Skips archive/docs/content dirs common in knowledge-base-style repos."
+        ),
+    ),
+    include_paths: list[str] = typer.Option(  # noqa: B008
+        None,
+        "--include-path",
+        help=(
+            "Restrict scan to these path prefixes (relative to project root). "
+            "Repeatable. Overrides --source-only auto-detection."
+        ),
+    ),
+    extra_excludes: list[str] = typer.Option(  # noqa: B008
+        None,
+        "--exclude",
+        help=(
+            "Additional directory/file glob patterns to skip. "
+            "Repeatable. Merged with default excludes."
+        ),
+    ),
 ) -> None:
     """Scan codebase for technical debt signals. [Pro]"""
     track_command("tech_debt")
@@ -989,7 +1017,22 @@ def tech_debt(
             console.print(f"[red]Error:[/red] {root} is not a directory.")
             raise typer.Exit(1)
 
-        config = ForgeConfig(root_path=root)
+        source_roots: list[str] = []
+        if include_paths:
+            source_roots = [p for p in include_paths if p]
+        elif source_only:
+            source_roots = [d for d in _SOURCE_DIR_CANDIDATES if (root / d).is_dir()]
+            if not source_roots:
+                console.print(
+                    "[yellow]--source-only:[/yellow] no standard source dirs found "
+                    f"({', '.join(_SOURCE_DIR_CANDIDATES)}). Scanning full tree."
+                )
+
+        config = ForgeConfig(root_path=root, source_roots=source_roots)
+        if extra_excludes:
+            config.exclude_patterns = list(config.exclude_patterns) + [
+                e for e in extra_excludes if e
+            ]
 
         with Progress(
             SpinnerColumn(),

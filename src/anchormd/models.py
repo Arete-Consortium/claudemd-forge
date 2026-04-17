@@ -71,6 +71,7 @@ class ForgeConfig(BaseModel):
     exclude_patterns: list[str] = Field(default_factory=lambda: list(DEFAULT_EXCLUDE_DIRS))
     max_file_size_kb: int = 500
     max_files: int = 5000
+    source_roots: list[str] = Field(default_factory=list)
 
 
 class FrameworkPreset(BaseModel):

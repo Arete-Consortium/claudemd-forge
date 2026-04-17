@@ -101,6 +101,19 @@ class TechDebtAnalyzer:
 
         source_files = [f for f in structure.files if LANGUAGE_EXTENSIONS.get(f.extension)]
 
+        # Scope to explicit source roots when configured (e.g. ["src", "packages"]).
+        # Paths are matched as prefixes against each file's relative path.
+        if config.source_roots:
+            roots = tuple(r.strip("/").replace("\\", "/") for r in config.source_roots if r.strip())
+            source_files = [
+                f for f in source_files
+                if any(
+                    str(f.path).replace("\\", "/").startswith(r + "/")
+                    or str(f.path).replace("\\", "/") == r
+                    for r in roots
+                )
+            ]
+
         # Project-level checks
         self._check_project_hygiene(structure, summary)
 
