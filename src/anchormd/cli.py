@@ -247,6 +247,437 @@ def audit(
 
 
 @app.command()
+def verify(
+    path: Path = typer.Argument(  # noqa: B008
+        ..., help="Path to existing CLAUDE.md file"
+    ),
+    output_json: bool = typer.Option(  # noqa: B008
+        False, "--json", help="Output results as JSON"
+    ),
+    fail_below: int = typer.Option(  # noqa: B008
+        80, "--fail-below", help="Exit code 2 if reality score below this threshold"
+    ),
+) -> None:
+    """Verify CLAUDE.md claims against the filesystem (files, version, deps)."""
+    track_command("verify")
+    from anchormd.analyzers.reality import verify as run_verify
+
+    target = path.resolve()
+    if not target.is_file():
+        msg = f"{target} is not a file"
+        if output_json:
+            print(json.dumps({"error": msg}))  # noqa: T201
+        else:
+            console.print(f"[red]Error:[/red] {msg}.")
+        raise typer.Exit(1)
+
+    report = run_verify(target.read_text(), target.parent)
+
+    if output_json:
+        print(  # noqa: T201
+            json.dumps(
+                {
+                    "score": report.score,
+                    "checks_run": report.checks_run,
+                    "checks_passed": report.checks_passed,
+                    "findings": [
+                        {
+                            "severity": f.severity,
+                            "category": f.category,
+                            "message": f.message,
+                            "claim": f.claim,
+                            "suggestion": f.suggestion,
+                        }
+                        for f in report.findings
+                    ],
+                },
+                indent=2,
+            )
+        )
+    else:
+        if report.findings:
+            table = Table(title="Reality Check Findings")
+            table.add_column("Severity", style="bold")
+            table.add_column("Category")
+            table.add_column("Claim")
+            table.add_column("Message")
+            severity_styles = {"error": "red", "warning": "yellow", "info": "blue"}
+            for f in report.findings:
+                style = severity_styles.get(f.severity, "white")
+                table.add_row(
+                    f"[{style}]{f.severity.upper()}[/{style}]",
+                    f.category,
+                    f.claim[:50],
+                    f.message,
+                )
+            console.print(table)
+        else:
+            console.print("[green]All claims verified.[/green]")
+
+        score_color = (
+            "green" if report.score >= 90 else "yellow" if report.score >= 70 else "red"
+        )
+        console.print(
+            f"\n[{score_color}]Reality score: {report.score}/100 "
+            f"({report.checks_passed}/{report.checks_run} checks passed)[/{score_color}]"
+        )
+
+    if report.score < fail_below and report.checks_run > 0:
+        raise typer.Exit(2)
+
+
+@app.command()
+def fleet(
+    root: Path = typer.Argument(  # noqa: B008
+        Path.home() / "projects", help="Root directory to scan for CLAUDE.md files"
+    ),
+    output_json: bool = typer.Option(  # noqa: B008
+        False, "--json", help="Output results as JSON"
+    ),
+    min_score: int = typer.Option(  # noqa: B008
+        0, "--min-score", help="Only include projects scoring at or above this"
+    ),
+    reality: bool = typer.Option(  # noqa: B008
+        False, "--reality", help="Also run reality verification (slower)"
+    ),
+    limit: int = typer.Option(  # noqa: B008
+        0, "--limit", help="Only show top N projects (0 = show all)"
+    ),
+) -> None:
+    """Audit every CLAUDE.md under a root directory and emit a ranked report."""
+    track_command("fleet")
+    from anchormd.analyzers.reality import verify as run_verify
+    from anchormd.generators.auditor import ClaudeMdAuditor
+
+    root = root.resolve()
+    if not root.is_dir():
+        msg = f"{root} is not a directory"
+        if output_json:
+            print(json.dumps({"error": msg}))  # noqa: T201
+        else:
+            console.print(f"[red]Error:[/red] {msg}.")
+        raise typer.Exit(1)
+
+    # Find CLAUDE.md files, pruning heavy/forbidden directories during descent.
+    import os as _os
+
+    claude_files: list[Path] = []
+    skip_parts = {
+        ".venv", "venv", "node_modules", ".git", "__pycache__",
+        "dist", "build", ".next", "target", ".flatpak-builder",
+        ".cache", ".tox", ".pytest_cache", ".ruff_cache", ".mypy_cache",
+        ".animus", "site-packages",
+    }
+    for dirpath, dirnames, filenames in _os.walk(root, topdown=True, followlinks=False):
+        # Prune subdirs in-place.
+        dirnames[:] = [d for d in dirnames if d not in skip_parts and not d.startswith(".")]
+        if "CLAUDE.md" in filenames:
+            candidate = Path(dirpath) / "CLAUDE.md"
+            try:
+                rel = candidate.relative_to(root)
+            except ValueError:
+                continue
+            # Keep project-root CLAUDE.md only (one level deep from root).
+            if len(rel.parts) > 2:
+                continue
+            claude_files.append(candidate)
+
+    import contextlib
+    import io
+
+    def _audit_one(claude_path: Path) -> dict:
+        project_root = claude_path.parent
+        project_name = project_root.name
+        try:
+            content = claude_path.read_text()
+            config = ForgeConfig(root_path=project_root)
+            # Silence scanner/analyzer stderr noise (permission denied etc).
+            with contextlib.redirect_stderr(io.StringIO()):
+                scanner = CodebaseScanner(config)
+                structure = scanner.scan()
+                analyses = run_all(structure, config)
+            auditor = ClaudeMdAuditor(config)
+            audit_report = auditor.audit(content, structure, analyses)
+            entry = {
+                "project": project_name,
+                "path": str(claude_path),
+                "audit_score": audit_report.score,
+                "missing_sections": audit_report.missing_sections,
+            }
+            if reality:
+                reality_report = run_verify(content, project_root)
+                entry["reality_score"] = reality_report.score
+                entry["reality_findings"] = len(reality_report.findings)
+            return entry
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "project": project_name,
+                "path": str(claude_path),
+                "audit_score": 0,
+                "error": str(exc),
+            }
+
+    console.print(f"[dim]Auditing {len(claude_files)} project(s)...[/dim]")
+    results: list[dict] = []
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        futures = {pool.submit(_audit_one, cp): cp for cp in claude_files}
+        for i, fut in enumerate(as_completed(futures), 1):
+            results.append(fut.result())
+            if i % 10 == 0:
+                console.print(f"[dim]  {i}/{len(claude_files)}[/dim]")
+
+    # Sort ascending by audit_score — worst first (highest ROI to fix).
+    results.sort(key=lambda r: r.get("audit_score", 0))
+    filtered = [r for r in results if r.get("audit_score", 0) >= min_score]
+    if limit > 0:
+        filtered = filtered[:limit]
+
+    if output_json:
+        print(json.dumps({"root": str(root), "total": len(results), "results": filtered}, indent=2))  # noqa: T201
+        return
+
+    if not filtered:
+        console.print(f"[yellow]No CLAUDE.md files found under {root}[/yellow]")
+        return
+
+    table = Table(title=f"Fleet Audit ({len(filtered)}/{len(results)} shown)")
+    table.add_column("Project", style="bold")
+    table.add_column("Audit", justify="right")
+    if reality:
+        table.add_column("Reality", justify="right")
+    table.add_column("Missing Sections")
+    for r in filtered:
+        audit = r.get("audit_score", 0)
+        audit_color = "green" if audit >= 70 else "yellow" if audit >= 40 else "red"
+        row = [
+            r["project"],
+            f"[{audit_color}]{audit}[/{audit_color}]",
+        ]
+        if reality:
+            rs = r.get("reality_score", "—")
+            if isinstance(rs, int):
+                rs_color = "green" if rs >= 90 else "yellow" if rs >= 70 else "red"
+                row.append(f"[{rs_color}]{rs}[/{rs_color}]")
+            else:
+                row.append("—")
+        row.append(", ".join(r.get("missing_sections", []))[:60])
+        table.add_row(*row)
+    console.print(table)
+
+    # Summary stats.
+    avg = sum(r.get("audit_score", 0) for r in results) / max(len(results), 1)
+    below_70 = sum(1 for r in results if r.get("audit_score", 0) < 70)
+    console.print(
+        f"\n[bold]Summary:[/bold] {len(results)} projects · "
+        f"avg score {avg:.0f}/100 · {below_70} below 70"
+    )
+
+
+@app.command()
+def harvest(
+    path: Path = typer.Argument(Path("."), help="Project directory"),  # noqa: B008
+    output_json: bool = typer.Option(  # noqa: B008
+        False, "--json", help="Output results as JSON"
+    ),
+    min_count: int = typer.Option(  # noqa: B008
+        2, "--min-count", help="Minimum recurrence count to surface"
+    ),
+    limit: int = typer.Option(  # noqa: B008
+        10, "--limit", help="Top N gotchas to return"
+    ),
+    suggest: bool = typer.Option(  # noqa: B008
+        False, "--suggest", help="Emit an Anti-Patterns markdown block ready for CLAUDE.md"
+    ),
+) -> None:
+    """Harvest recurring tool errors from Claude Code transcripts for this project."""
+    track_command("harvest")
+    from anchormd.analyzers.harvest import harvest as run_harvest
+    from anchormd.analyzers.suggestions import format_anti_patterns_block
+
+    project_root = path.resolve()
+    if not project_root.is_dir():
+        msg = f"{project_root} is not a directory"
+        if output_json:
+            print(json.dumps({"error": msg}))  # noqa: T201
+        else:
+            console.print(f"[red]Error:[/red] {msg}.")
+        raise typer.Exit(1)
+
+    report = run_harvest(project_root, min_count=min_count, limit=limit)
+    matched_suggestions = [g.suggestion for g in report.gotchas if g.suggestion]
+
+    if output_json:
+        print(  # noqa: T201
+            json.dumps(
+                {
+                    "project": str(report.project_path),
+                    "transcript_dir": str(report.transcript_dir) if report.transcript_dir else None,
+                    "sessions_scanned": report.sessions_scanned,
+                    "tool_errors": report.tool_errors,
+                    "gotchas": [
+                        {
+                            "tool": g.tool,
+                            "count": g.count,
+                            "sessions": g.sessions,
+                            "signature": g.signature,
+                            "examples": g.examples,
+                            "suggestion": (
+                                {"title": g.suggestion.title, "body": g.suggestion.body}
+                                if g.suggestion
+                                else None
+                            ),
+                        }
+                        for g in report.gotchas
+                    ],
+                    "suggestions_markdown": format_anti_patterns_block(matched_suggestions),
+                },
+                indent=2,
+            )
+        )
+        return
+
+    if report.transcript_dir is None:
+        console.print(
+            f"[yellow]No Claude Code transcripts found for {project_root}[/yellow]\n"
+            f"Expected: ~/.claude/projects/<slug>/ matching this path."
+        )
+        return
+
+    # --suggest: emit only the markdown block (for piping into CLAUDE.md edits).
+    if suggest:
+        block = format_anti_patterns_block(matched_suggestions)
+        if block:
+            print(block)  # noqa: T201
+        else:
+            console.print(
+                "[yellow]No mapped suggestions — run without --suggest to see raw gotchas.[/yellow]"
+            )
+        return
+
+    console.print(
+        f"[dim]Transcripts: {report.transcript_dir} "
+        f"({report.sessions_scanned} sessions, {report.tool_errors} errors)[/dim]"
+    )
+
+    if not report.gotchas:
+        console.print(
+            f"[green]No recurring gotchas (min_count={min_count}).[/green]"
+        )
+        return
+
+    table = Table(title=f"Top {len(report.gotchas)} recurring gotchas")
+    table.add_column("#", justify="right", style="bold")
+    table.add_column("Tool")
+    table.add_column("Count", justify="right")
+    table.add_column("Sessions", justify="right")
+    table.add_column("Signature")
+    table.add_column("Suggested Anti-Pattern")
+    for i, g in enumerate(report.gotchas, 1):
+        suggestion_text = g.suggestion.title if g.suggestion else "[dim]—[/dim]"
+        table.add_row(
+            str(i),
+            g.tool,
+            str(g.count),
+            str(g.sessions),
+            g.signature[:50],
+            suggestion_text,
+        )
+    console.print(table)
+
+    mapped = len(matched_suggestions)
+    if mapped:
+        console.print(
+            f"\n[green]{mapped}/{len(report.gotchas)} gotchas have known anti-pattern mappings.[/green]"
+        )
+        console.print(
+            "Re-run with [bold]--suggest[/bold] to emit a markdown block ready for CLAUDE.md."
+        )
+    else:
+        console.print(
+            "\n[yellow]No known anti-pattern mappings matched. "
+            "Convert gotchas into CLAUDE.md anti-patterns manually.[/yellow]"
+        )
+
+
+@app.command()
+def patch(
+    path: Path = typer.Argument(  # noqa: B008
+        ..., help="Path to existing CLAUDE.md file"
+    ),
+    dry_run: bool = typer.Option(  # noqa: B008
+        False, "-n", "--dry-run", help="Show the diff but don't write"
+    ),
+    yes: bool = typer.Option(  # noqa: B008
+        False, "-y", "--yes", help="Skip confirmation"
+    ),
+    min_count: int = typer.Option(  # noqa: B008
+        2, "--min-count", help="Minimum gotcha recurrence to harvest"
+    ),
+    limit: int = typer.Option(  # noqa: B008
+        20, "--limit", help="Max gotchas to consider for suggestions"
+    ),
+) -> None:
+    """Harvest gotchas and splice new anti-patterns into CLAUDE.md."""
+    track_command("patch")
+    from anchormd.analyzers.harvest import harvest as run_harvest
+    from anchormd.analyzers.suggestions import format_bullets
+    from anchormd.generators.patcher import patch as run_patch
+
+    target = path.resolve()
+    if not target.is_file():
+        console.print(f"[red]Error:[/red] {target} is not a file.")
+        raise typer.Exit(1)
+
+    project_root = target.parent
+    report = run_harvest(project_root, min_count=min_count, limit=limit)
+
+    if report.transcript_dir is None:
+        console.print(
+            f"[yellow]No Claude Code transcripts found for {project_root}.[/yellow]"
+        )
+        raise typer.Exit(0)
+
+    suggestions = [g.suggestion for g in report.gotchas if g.suggestion]
+    if not suggestions:
+        console.print(
+            f"[yellow]No mapped anti-pattern suggestions from {report.tool_errors} errors."
+            f"[/yellow]"
+        )
+        raise typer.Exit(0)
+
+    bullets = format_bullets(suggestions)
+    content = target.read_text()
+    result = run_patch(content, bullets)
+
+    if not result.changed:
+        console.print(
+            f"[green]All {result.skipped} suggested anti-patterns are already in "
+            "CLAUDE.md. Nothing to add.[/green]"
+        )
+        raise typer.Exit(0)
+
+    console.print(
+        f"[bold]Adding:[/bold] {result.added} new bullet(s) · "
+        f"[dim]skipping {result.skipped} already present[/dim]"
+    )
+    console.print(Panel(result.diff, title="Diff", border_style="cyan"))
+
+    if dry_run:
+        raise typer.Exit(0)
+
+    if not yes:
+        confirm = typer.confirm(f"Write these changes to {target}?", default=True)
+        if not confirm:
+            console.print("[yellow]Aborted.[/yellow]")
+            raise typer.Exit(0)
+
+    target.write_text(result.patched)
+    console.print(f"[green]Patched:[/green] {target}")
+
+
+@app.command()
 @require_pro("init_interactive")
 def init(
     path: Path = typer.Argument(Path("."), help="Path to project root"),  # noqa: B008

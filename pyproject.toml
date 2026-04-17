@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anchormd"
-version = "0.4.1"
+version = "0.5.0"
 description = "Generate and audit AI agent context files — tech debt scanner, GitHub health, cleanup agent"
 readme = "README.md"
 license = {text = "BSL-1.1"}

@@ -4,11 +4,13 @@
 
 Generate and audit CLAUDE.md files for AI coding agents. Freemium CLI with Pro license server and Stripe-automated fulfillment.
 
+Commands: `generate`, `audit` (structure scoring), `verify` (reality check — claims vs filesystem), `fleet` (cross-repo audit), `harvest` (recurring gotchas from Claude Code transcripts), `patch` (splice harvested anti-patterns into existing CLAUDE.md), plus Pro: `init`, `diff`, `tech-debt`, `github-health`, `cleanup`, `drift`.
+
 ## Current State
 
-- **Version**: 0.3.0
+- **Version**: 0.5.0
 - **Language**: Python
-- **Tests**: 134 (license server) + client-side tests
+- **Tests**: 134 (license server) + ~390 client-side tests (including verify/fleet/harvest/patch/suggestions)
 - **License Server**: `https://anmd-license.fly.dev` (Fly.io, SQLite + WAL)
 - **Stripe**: Live — automated checkout → key generation → email delivery
 
@@ -180,7 +182,7 @@ curl https://anmd-license.fly.dev/v1/health
 ### Phase 1 — MVP Web UI (April 1–14)
 Goal: GitHub URL in → CLAUDE.md out. No auth, no payment. Shareable link.
 - FastAPI endpoint: `POST /scan` — accepts GitHub repo URL, returns generated CLAUDE.md
-- Port generation logic from CLI to `api/core/generator.py`
+- Port generation logic from CLI to `web/generator.py`
 - React landing page: URL input → loading → output with copy button
 - Deploy on Fly.io
 
