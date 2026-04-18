@@ -1,25 +1,25 @@
 # Show HN Post Draft
 
-**Title:** Show HN: anchormd — Generate CLAUDE.md context files for AI coding agents
+**Title:** Show HN: Anchormd – Generate AI coding agent context files from any GitHub repo
 
 **URL:** https://anchormd.dev
 
 **Body:**
 
-Hi HN,
+Anchormd reads a GitHub repo and writes the context file your AI coding agent needs — `CLAUDE.md` for Claude Code, `.cursorrules` for Cursor, `.github/copilot-instructions.md` for Copilot, or `.windsurfrules` for Windsurf. Paste a URL, pick a format, download.
 
-AI coding agents (Claude Code, Cursor, Copilot, Windsurf) work significantly better when they have accurate project context. Each has its own file — `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules` — that describes your codebase: architecture, conventions, commands, domain terms.
+The problem I kept running into: the agent's only as good as the context file, and the context file is the thing nobody wants to write. Templates go stale. Hand-written ones drift from reality within weeks. And if you switch agents you start over.
 
-The problem: writing these by hand is tedious and they go stale fast.
+Anchormd runs 8 analyzers over your actual code — naming conventions, import style, quote style, directory layout, detected test/lint/build commands, domain terms pulled from class names and API routes — and scores the output 0-100 against a quality rubric (coverage, specificity, freshness). Score under 100? Download a fix report with gap analysis, copy-paste templates for missing sections, and a one-shot prompt that closes the gaps.
 
-anchormd scans your codebase and generates one automatically. It detects your actual coding patterns (naming conventions, import style, quote style) rather than guessing, maps your architecture, finds your test/lint/build commands, and extracts domain context (key classes, API endpoints, enums).
+It's the audit, not the generator, that I think is novel. A half-written CLAUDE.md is worse than none — the agent confidently follows stale rules. The scorer catches that.
 
-Web UI: paste a GitHub URL at anchormd.dev, get results in ~30 seconds. One-click export to the native format of each agent (Claude, Cursor, Copilot, Windsurf). Sign in with GitHub for private repos and batch-scan your entire account. Repos that already scored 100 and haven't changed get cached on re-scans.
+**Try it:** paste any public GitHub URL at https://anchormd.dev (no signup, ~30 seconds). Sign in with GitHub to batch-scan every repo you own.
 
-CLI: `pip install anchormd && anchormd generate .`
+**CLI:** `pip install anchormd && anchormd generate .`
 
-It scores your context file 0-100. If you're under 100, download a fix report with the exact gap analysis, copy-paste templates for missing sections, and a prompt to paste into Claude Code that fixes everything at once.
-
-Built with Python/FastAPI backend, React frontend. ~700 tests. MIT licensed CLI, Pro tier for advanced features (init, diff, tech-debt scanning). Deep scan reports ($29 one-time) for full architecture audit with recommendations.
+MIT licensed CLI, ~700 tests. Pro tier ($8/mo) adds interactive `init`, `diff` (drift detection), and `tech-debt` scanning. One-time $29 deep-scan report for a full architectural audit.
 
 Source: https://github.com/Arete-Consortium/anchormd
+
+Happy to answer questions about the analyzer design, scoring rubric, or the engineering tradeoffs in running untrusted repos as a public scanner.
