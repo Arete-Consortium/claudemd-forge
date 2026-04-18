@@ -1156,12 +1156,13 @@ export default function App() {
                     </p>
                   </div>
                   <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6">
-                    <div className="text-anchor-400 text-2xl mb-3">&#128640;</div>
-                    <h3 className="text-white font-semibold mb-2">Push to Repo</h3>
+                    <div className="text-anchor-400 text-2xl mb-3">&#128230;</div>
+                    <h3 className="text-white font-semibold mb-2">Multi-Agent Export</h3>
                     <p className="text-gray-400 text-sm">
-                      One click creates a PR with your CLAUDE.md. Also exports
-                      to .cursorrules, .github/copilot-instructions.md, and
-                      .windsurfrules.
+                      One scan, four formats: <code className="text-anchor-300 text-xs">CLAUDE.md</code>,{" "}
+                      <code className="text-anchor-300 text-xs">.cursorrules</code>,{" "}
+                      <code className="text-anchor-300 text-xs">copilot-instructions.md</code>,{" "}
+                      <code className="text-anchor-300 text-xs">.windsurfrules</code>. Or push a PR straight to your repo.
                     </p>
                   </div>
                 </div>

@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>anchormd — CLAUDE.md Generator for AI Coding Agents</title>
-    <meta name="description" content="Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Windsurf, and Codex actually understand your project.">
+    <meta name="description" content="Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Copilot, and Windsurf actually understand your project.">
     <link rel="canonical" href="https://anchormd.dev/">
     <meta property="og:title" content="anchormd — CLAUDE.md Generator for AI Coding Agents">
-    <meta property="og:description" content="Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Windsurf, and Codex actually understand your project.">
+    <meta property="og:description" content="Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Copilot, and Windsurf actually understand your project.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://anchormd.dev">
     <style>
@@ -65,6 +65,19 @@
         }
         .hero .install:hover { border-color: var(--accent); }
         .hero .install::before { content: '$ '; color: var(--text-dim); }
+        .hero .or { display: block; margin: 16px 0 12px; color: var(--text-dim); font-size: 0.9rem; }
+        .hero .webapp {
+            display: inline-block;
+            background: var(--accent-dim);
+            color: white;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .hero .webapp:hover { background: var(--accent); }
         .badges {
             margin-top: 24px;
             display: flex;
@@ -193,8 +206,10 @@
         <!-- Hero -->
         <section class="hero">
             <h1>anchormd</h1>
-            <p class="tagline">Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Windsurf, and Codex actually understand your project.</p>
+            <p class="tagline">Generate and audit CLAUDE.md files in seconds. Make Claude Code, Cursor, Copilot, and Windsurf actually understand your project.</p>
             <div class="install" onclick="navigator.clipboard.writeText('pip install anchormd')" title="Click to copy">pip install anchormd</div>
+            <span class="or">— or —</span>
+            <a class="webapp" href="https://anchormd.dev">Scan a repo in your browser &rarr;</a>
             <div class="badges">
                 <img src="https://img.shields.io/pypi/v/anchormd?color=7c3aed" alt="PyPI">
                 <img src="https://img.shields.io/pypi/pyversions/anchormd" alt="Python">
@@ -220,6 +235,10 @@
             <div class="feature">
                 <h3>Framework-Aware</h3>
                 <p>11 presets for FastAPI, React, Next.js, Django, Rust, Go, Express, and more. Each preset knows the conventions and anti-patterns of its ecosystem.</p>
+            </div>
+            <div class="feature">
+                <h3>Multi-Agent Export</h3>
+                <p>One scan, four formats: <code>CLAUDE.md</code>, <code>.cursorrules</code>, <code>.github/copilot-instructions.md</code>, <code>.windsurfrules</code>. Works with whichever agent your team uses today — and the one it switches to next quarter.</p>
             </div>
         </section>
 
