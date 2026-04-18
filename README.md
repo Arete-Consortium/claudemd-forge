@@ -132,6 +132,16 @@ The action posts a formatted comment on your PR with score, findings, and recomm
 export ANCHORMD_LICENSE=ANMD-XXXX-XXXX-XXXX
 ```
 
+### Strict Mode (CI / Unattended)
+
+By default, `anchormd` fails open: if the license server is unreachable and no cache exists, a valid-format key grants Pro so a transient network blip does not break a working install. Set `ANCHORMD_STRICT=1` to reverse that — any validation failure (missing key, server unreachable with no cache, revoked or expired key) drops to Free and exits non-zero on Pro commands.
+
+```bash
+export ANCHORMD_STRICT=1
+```
+
+Recommended for CI jobs, release pipelines, and any unattended run where silent unlicensed fallback is worse than a hard fail. Leave unset for interactive developer use. See [anchormd.dev](https://anchormd.dev) for details.
+
 ## Framework Presets
 
 | Preset | Description |

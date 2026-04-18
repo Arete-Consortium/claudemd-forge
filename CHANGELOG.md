@@ -10,6 +10,8 @@ All notable changes to anchormd are documented here. This project follows [Seman
 - `anchormd harvest [project]` — parses `~/.claude/projects/<slug>/*.jsonl` transcripts, extracts tool errors, normalizes them (strips paths/hex/numbers), and surfaces recurring gotchas by tool + signature. Reveals patterns like repeated Edit-before-Read failures or file-too-large Reads.
 - `anchormd patch <CLAUDE.md>` — harvests gotchas and splices matching anti-patterns into the file's `## Anti-Patterns` section. Case-insensitive dedupe by bullet title, diff preview, `--dry-run` / `-y` flags.
 - Gotcha → anti-pattern suggestion library (`analyzers/suggestions.py`) with rules for Edit/Write without Read, Read token-limit overflow, Edit on stale read, WebFetch status failures, `command not found`, `rm → trash` aliasing, and user-denied tool uses.
+- `ANCHORMD_STRICT=1` — opt-in strict licensing mode that closes the fail-open path. Any validation failure (missing key, server unreachable with no cache, revoked or expired key) drops to Free and exits non-zero on Pro commands. Recommended for CI and unattended pipelines.
+- `tech-debt --source-only` flag to restrict scanning to source directories, plus `--include-path` and `--exclude` filters for finer control over which files are audited.
 
 ### Changed
 - Version bumped 0.4.1 → 0.5.0.
