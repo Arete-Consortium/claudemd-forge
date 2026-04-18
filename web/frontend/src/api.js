@@ -124,3 +124,11 @@ export async function pushPR(scanId, options = {}) {
 export async function getCursorRules(scanId) {
   return apiGet(`/api/scan/${scanId}/cursorrules`);
 }
+
+export async function getCopilotInstructions(scanId) {
+  return apiGet(`/api/scan/${scanId}/copilot-instructions`);
+}
+
+export async function getWindsurfRules(scanId) {
+  return apiGet(`/api/scan/${scanId}/windsurfrules`);
+}

@@ -8,13 +8,13 @@
 
 Hi HN,
 
-AI coding agents (Claude Code, Cursor, Copilot) work significantly better when they have accurate project context. The standard approach is a CLAUDE.md or .cursorrules file that describes your codebase — architecture, conventions, commands, domain terms.
+AI coding agents (Claude Code, Cursor, Copilot, Windsurf) work significantly better when they have accurate project context. Each has its own file — `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, `.windsurfrules` — that describes your codebase: architecture, conventions, commands, domain terms.
 
 The problem: writing these by hand is tedious and they go stale fast.
 
 anchormd scans your codebase and generates one automatically. It detects your actual coding patterns (naming conventions, import style, quote style) rather than guessing, maps your architecture, finds your test/lint/build commands, and extracts domain context (key classes, API endpoints, enums).
 
-Web UI: paste a GitHub URL at anchormd.dev, get results in ~30 seconds. Sign in with GitHub for private repos and batch-scan your entire account. Repos that already scored 100 and haven't changed get cached on re-scans.
+Web UI: paste a GitHub URL at anchormd.dev, get results in ~30 seconds. One-click export to the native format of each agent (Claude, Cursor, Copilot, Windsurf). Sign in with GitHub for private repos and batch-scan your entire account. Repos that already scored 100 and haven't changed get cached on re-scans.
 
 CLI: `pip install anchormd && anchormd generate .`
 

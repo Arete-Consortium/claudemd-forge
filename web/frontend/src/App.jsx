@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "./AuthContext";
-import { getGitHubLoginUrl, createDeepScanCheckout, getDeepScanReport, getFixReport, pushPR, getCursorRules } from "./api";
+import { getGitHubLoginUrl, createDeepScanCheckout, getDeepScanReport, getFixReport, pushPR, getCursorRules, getCopilotInstructions, getWindsurfRules } from "./api";
 import ReposPage from "./ReposPage";
 import AdminPage from "./AdminPage";
 
@@ -735,15 +735,15 @@ export default function App() {
     }
   };
 
-  const handleDownloadCursorRules = async () => {
+  const handleDownloadRulesFile = async (fetcher, filename) => {
     if (!result?.scan_id) return;
     try {
-      const data = await getCursorRules(result.scan_id);
+      const data = await fetcher(result.scan_id);
       const blob = new Blob([data.content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = ".cursorrules";
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -752,6 +752,13 @@ export default function App() {
       setError(err.message);
     }
   };
+
+  const handleDownloadCursorRules = () =>
+    handleDownloadRulesFile(getCursorRules, ".cursorrules");
+  const handleDownloadCopilotInstructions = () =>
+    handleDownloadRulesFile(getCopilotInstructions, "copilot-instructions.md");
+  const handleDownloadWindsurfRules = () =>
+    handleDownloadRulesFile(getWindsurfRules, ".windsurfrules");
 
   const handleLogin = async () => {
     try {
@@ -1045,6 +1052,20 @@ export default function App() {
                     >
                       .cursorrules
                     </button>
+                    <button
+                      onClick={handleDownloadCopilotInstructions}
+                      className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5
+                                 border border-gray-700 rounded-md transition-colors"
+                    >
+                      Copilot
+                    </button>
+                    <button
+                      onClick={handleDownloadWindsurfRules}
+                      className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5
+                                 border border-gray-700 rounded-md transition-colors"
+                    >
+                      .windsurfrules
+                    </button>
                     {result.score < 100 && (
                       <button
                         onClick={handleDownloadFixReport}
@@ -1139,7 +1160,8 @@ export default function App() {
                     <h3 className="text-white font-semibold mb-2">Push to Repo</h3>
                     <p className="text-gray-400 text-sm">
                       One click creates a PR with your CLAUDE.md. Also exports
-                      as .cursorrules for Cursor users.
+                      to .cursorrules, .github/copilot-instructions.md, and
+                      .windsurfrules.
                     </p>
                   </div>
                 </div>

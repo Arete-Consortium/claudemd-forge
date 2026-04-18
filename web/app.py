@@ -2611,6 +2611,91 @@ async def get_cursorrules(scan_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/api/scan/{scan_id}/copilot-instructions")
+async def get_copilot_instructions(scan_id: str) -> dict[str, Any]:
+    """Convert a scan result to GitHub Copilot's .github/copilot-instructions.md format."""
+    import re
+
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    row_dict = dict(row)
+    if row_dict["status"] != "complete" or not row_dict.get("content"):
+        raise HTTPException(status_code=400, detail="Scan not complete")
+
+    content = row_dict["content"]
+    content = re.sub(r"^# CLAUDE\.md — .+\n*", "", content)
+
+    repo_url = row_dict["repo_url"]
+    repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+    instructions = (
+        f"# Copilot Instructions — {repo_name}\n\n"
+        "These are project instructions for GitHub Copilot. "
+        "Apply them to every code suggestion, completion, and chat response in this repository.\n\n"
+        + content.strip()
+        + "\n"
+    )
+
+    return {
+        "scan_id": scan_id,
+        "content": instructions,
+        "filename": ".github/copilot-instructions.md",
+    }
+
+
+@app.get("/api/scan/{scan_id}/windsurfrules")
+async def get_windsurfrules(scan_id: str) -> dict[str, Any]:
+    """Convert a scan result to .windsurfrules format for Windsurf IDE."""
+    import re
+
+    conn = _get_db()
+    try:
+        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    row_dict = dict(row)
+    if row_dict["status"] != "complete" or not row_dict.get("content"):
+        raise HTTPException(status_code=400, detail="Scan not complete")
+
+    content = row_dict["content"]
+    content = re.sub(r"^# CLAUDE\.md — .+\n*", "", content)
+
+    renames = {
+        "## Project Overview": "## Project Context",
+        "## Anti-Patterns": "## Avoid",
+        "## Common Commands": "## Commands",
+        "## Git Conventions": "## Git",
+    }
+    for old, new in renames.items():
+        content = content.replace(old, new)
+
+    repo_url = row_dict["repo_url"]
+    repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+    windsurfrules = (
+        f"# Windsurf Rules — {repo_name}\n\n"
+        "You are Cascade, an agentic AI coding assistant working on this project. "
+        "Follow these rules strictly.\n\n"
+        + content.strip()
+        + "\n"
+    )
+
+    return {
+        "scan_id": scan_id,
+        "content": windsurfrules,
+        "filename": ".windsurfrules",
+    }
+
+
 @app.get("/api/health")
 async def health() -> dict[str, str]:
     """Health check."""

@@ -19,6 +19,6 @@ I built **anchormd** to automate this. It scans your codebase and generates a co
 
 **CLI:** `pip install anchormd && anchormd generate .`
 
-The output works as a CLAUDE.md for Claude Code or can be adapted as .cursorrules. Planning native .cursorrules export soon.
+One-click export to the native format for each agent: `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, and `.windsurfrules`. Or push a PR to your repo directly.
 
 ~700 tests, MIT licensed. Feedback welcome.

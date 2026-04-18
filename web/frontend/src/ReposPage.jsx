@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
-import { listRepos, scanRepo, getScan, scanAll, getBatchStatus, getFixReport, pushPR, getCursorRules } from "./api";
+import { listRepos, scanRepo, getScan, scanAll, getBatchStatus, getFixReport, pushPR, getCursorRules, getCopilotInstructions, getWindsurfRules } from "./api";
 import ReactMarkdown from "react-markdown";
 
 const POLL_INTERVAL = 2000;
@@ -204,15 +204,15 @@ export default function ReposPage() {
     );
   }
 
-  const handleDownloadCursorRules = async (scan) => {
+  const handleDownloadRulesFile = async (scan, fetcher, filename) => {
     if (!scan?.scan_id) return;
     try {
-      const data = await getCursorRules(scan.scan_id);
+      const data = await fetcher(scan.scan_id);
       const blob = new Blob([data.content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = ".cursorrules";
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -221,6 +221,13 @@ export default function ReposPage() {
       // Silent fail.
     }
   };
+
+  const handleDownloadCursorRules = (scan) =>
+    handleDownloadRulesFile(scan, getCursorRules, ".cursorrules");
+  const handleDownloadCopilotInstructions = (scan) =>
+    handleDownloadRulesFile(scan, getCopilotInstructions, "copilot-instructions.md");
+  const handleDownloadWindsurfRules = (scan) =>
+    handleDownloadRulesFile(scan, getWindsurfRules, ".windsurfrules");
 
   const handlePushPR = async (scan) => {
     if (!scan?.scan_id) return;
@@ -288,6 +295,18 @@ export default function ReposPage() {
               className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5 border border-gray-700 rounded-md"
             >
               .cursorrules
+            </button>
+            <button
+              onClick={() => handleDownloadCopilotInstructions(selectedScan)}
+              className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5 border border-gray-700 rounded-md"
+            >
+              Copilot
+            </button>
+            <button
+              onClick={() => handleDownloadWindsurfRules(selectedScan)}
+              className="text-gray-400 hover:text-gray-200 text-sm px-3 py-1.5 border border-gray-700 rounded-md"
+            >
+              .windsurfrules
             </button>
             {selectedScan.score != null && selectedScan.score < 100 && (
               <button

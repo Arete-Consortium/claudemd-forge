@@ -10,7 +10,7 @@ The difference isn't the model. It's context.
 
 ## The CLAUDE.md Problem
 
-AI coding agents need a context file — a description of your project that tells them how things work. Claude Code uses `CLAUDE.md`. Cursor uses `.cursorrules`. Without one, the AI is guessing.
+AI coding agents need a context file — a description of your project that tells them how things work. Claude Code uses `CLAUDE.md`. Cursor uses `.cursorrules`. Copilot reads `.github/copilot-instructions.md`. Windsurf uses `.windsurfrules`. Without one, the AI is guessing.
 
 Most developers either:
 1. Don't have one (the AI guesses everything)
