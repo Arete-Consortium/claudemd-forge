@@ -11,7 +11,7 @@ Commands: `generate`, `audit` (structure scoring), `verify` (reality check — c
 - **Version**: 0.5.0
 - **Language**: Python
 - **Tests**: 134 (license server) + ~390 client-side tests (including verify/fleet/harvest/patch/suggestions)
-- **License Server**: `https://anmd-license.fly.dev` (Fly.io, SQLite + WAL)
+- **License Server**: `https://cmdf-license.fly.dev` (Fly.io, SQLite + WAL)
 - **Stripe**: Live — automated checkout → key generation → email delivery
 
 ## Monetization
@@ -132,9 +132,9 @@ ruff format src/ tests/ license_server/
 # type check
 mypy src/
 # deploy license server
-fly deploy --dockerfile license_server/Dockerfile -a anmd-license --config license_server/fly.toml
+fly deploy --dockerfile license_server/Dockerfile --config license_server/fly.toml
 # health check
-curl https://anmd-license.fly.dev/v1/health
+curl https://cmdf-license.fly.dev/v1/health
 ```
 
 ## Coding Standards

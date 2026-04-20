@@ -1,4 +1,4 @@
-app = 'anmd-license'
+app = 'cmdf-license'
 primary_region = 'sjc'
 
 [build]
