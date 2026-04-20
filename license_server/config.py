@@ -70,7 +70,8 @@ def get_smtp_password() -> str | None:
 
 def get_smtp_from() -> str:
     """Return the From: address for outbound email."""
-    return _env("ANMD_SMTP_FROM", "CMDF_SMTP_FROM", "noreply@anchormd.dev") or "noreply@anchormd.dev"
+    default = "noreply@anchormd.dev"
+    return _env("ANMD_SMTP_FROM", "CMDF_SMTP_FROM", default) or default
 
 
 def get_aicards_mint_api() -> str:

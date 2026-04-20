@@ -16,8 +16,8 @@ from license_server.models import ErrorResponse, HealthResponse
 from license_server.rate_limit import limiter
 from license_server.routes.activate import router as activate_router
 from license_server.routes.revoke import router as revoke_router
-from license_server.routes.validate import router as validate_router
 from license_server.routes.usage import router as usage_router
+from license_server.routes.validate import router as validate_router
 from license_server.routes.webhook import router as webhook_router
 
 _db_path_override = None

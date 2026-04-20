@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 from anchormd.analyzers.github import GitHubAnalyzer
 from anchormd.models import ForgeConfig, ProjectStructure
+
+
+def _iso_days_ago(days: int) -> str:
+    """ISO timestamp N days ago — avoids hardcoded-date test rot."""
+    return (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _make_structure(root: Path = Path("/tmp/fake")) -> ProjectStructure:
@@ -181,19 +187,19 @@ class TestIssueDetection:
                     {
                         "number": 1,
                         "title": "fresh",
-                        "updatedAt": "2026-03-10T00:00:00Z",
+                        "updatedAt": _iso_days_ago(5),
                         "labels": [],
                     },
                     {
                         "number": 2,
                         "title": "month-old",
-                        "updatedAt": "2026-01-01T00:00:00Z",
+                        "updatedAt": _iso_days_ago(60),
                         "labels": [],
                     },
                     {
                         "number": 3,
                         "title": "ancient",
-                        "updatedAt": "2025-06-01T00:00:00Z",
+                        "updatedAt": _iso_days_ago(180),
                         "labels": [],
                     },
                 ]

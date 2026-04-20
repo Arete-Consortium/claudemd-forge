@@ -28,6 +28,8 @@ from anchormd.models import ForgeConfig
 from anchormd.scanner import CodebaseScanner
 from anchormd.telemetry import track_command
 
+_DEFAULT_FLEET_ROOT = Path.home() / "projects"
+
 app = typer.Typer(
     name="anchormd",
     help="Generate and audit CLAUDE.md files for AI coding agents.",
@@ -314,9 +316,7 @@ def verify(
         else:
             console.print("[green]All claims verified.[/green]")
 
-        score_color = (
-            "green" if report.score >= 90 else "yellow" if report.score >= 70 else "red"
-        )
+        score_color = "green" if report.score >= 90 else "yellow" if report.score >= 70 else "red"
         console.print(
             f"\n[{score_color}]Reality score: {report.score}/100 "
             f"({report.checks_passed}/{report.checks_run} checks passed)[/{score_color}]"
@@ -329,7 +329,7 @@ def verify(
 @app.command()
 def fleet(
     root: Path = typer.Argument(  # noqa: B008
-        Path.home() / "projects", help="Root directory to scan for CLAUDE.md files"
+        _DEFAULT_FLEET_ROOT, help="Root directory to scan for CLAUDE.md files"
     ),
     output_json: bool = typer.Option(  # noqa: B008
         False, "--json", help="Output results as JSON"
@@ -363,10 +363,23 @@ def fleet(
 
     claude_files: list[Path] = []
     skip_parts = {
-        ".venv", "venv", "node_modules", ".git", "__pycache__",
-        "dist", "build", ".next", "target", ".flatpak-builder",
-        ".cache", ".tox", ".pytest_cache", ".ruff_cache", ".mypy_cache",
-        ".animus", "site-packages",
+        ".venv",
+        "venv",
+        "node_modules",
+        ".git",
+        "__pycache__",
+        "dist",
+        "build",
+        ".next",
+        "target",
+        ".flatpak-builder",
+        ".cache",
+        ".tox",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".mypy_cache",
+        ".animus",
+        "site-packages",
     }
     for dirpath, dirnames, filenames in _os.walk(root, topdown=True, followlinks=False):
         # Prune subdirs in-place.
@@ -562,9 +575,7 @@ def harvest(
     )
 
     if not report.gotchas:
-        console.print(
-            f"[green]No recurring gotchas (min_count={min_count}).[/green]"
-        )
+        console.print(f"[green]No recurring gotchas (min_count={min_count}).[/green]")
         return
 
     table = Table(title=f"Top {len(report.gotchas)} recurring gotchas")
@@ -588,8 +599,9 @@ def harvest(
 
     mapped = len(matched_suggestions)
     if mapped:
+        total = len(report.gotchas)
         console.print(
-            f"\n[green]{mapped}/{len(report.gotchas)} gotchas have known anti-pattern mappings.[/green]"
+            f"\n[green]{mapped}/{total} gotchas have known anti-pattern mappings.[/green]"
         )
         console.print(
             "Re-run with [bold]--suggest[/bold] to emit a markdown block ready for CLAUDE.md."
@@ -634,16 +646,13 @@ def patch(
     report = run_harvest(project_root, min_count=min_count, limit=limit)
 
     if report.transcript_dir is None:
-        console.print(
-            f"[yellow]No Claude Code transcripts found for {project_root}.[/yellow]"
-        )
+        console.print(f"[yellow]No Claude Code transcripts found for {project_root}.[/yellow]")
         raise typer.Exit(0)
 
     suggestions = [g.suggestion for g in report.gotchas if g.suggestion]
     if not suggestions:
         console.print(
-            f"[yellow]No mapped anti-pattern suggestions from {report.tool_errors} errors."
-            f"[/yellow]"
+            f"[yellow]No mapped anti-pattern suggestions from {report.tool_errors} errors.[/yellow]"
         )
         raise typer.Exit(0)
 
@@ -800,9 +809,7 @@ def presets() -> None:
     console.print(table)
 
     if info.tier == Tier.FREE:
-        console.print(
-            "\n[dim]Upgrade to Pro for premium presets: https://anchormd.dev/pro[/dim]"
-        )
+        console.print("\n[dim]Upgrade to Pro for premium presets: https://anchormd.dev/pro[/dim]")
 
 
 @app.command()
@@ -847,9 +854,7 @@ def frameworks() -> None:
     console.print(table)
 
     if info.tier == Tier.FREE:
-        console.print(
-            "\n[dim]Upgrade to Pro for premium presets: https://anchormd.dev/pro[/dim]"
-        )
+        console.print("\n[dim]Upgrade to Pro for premium presets: https://anchormd.dev/pro[/dim]")
 
 
 @app.command()
@@ -886,9 +891,7 @@ def status() -> None:
     console.print(table)
 
     if info.tier == Tier.FREE:
-        console.print(
-            "\n[dim]Upgrade to Pro ($8/mo or $69/yr): https://anchormd.dev/pro[/dim]"
-        )
+        console.print("\n[dim]Upgrade to Pro ($8/mo or $69/yr): https://anchormd.dev/pro[/dim]")
 
 
 @app.command()
@@ -1059,12 +1062,17 @@ def tech_debt(
             print(json.dumps(findings, indent=2))  # noqa: T201
         else:
             # Score display
-            score_color = (
-                "green" if score >= 80 else "yellow" if score >= 50 else "red"
-            )
+            score_color = "green" if score >= 80 else "yellow" if score >= 50 else "red"
             grade = (
-                "A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70
-                else "D" if score >= 50 else "F"
+                "A"
+                if score >= 90
+                else "B"
+                if score >= 80
+                else "C"
+                if score >= 70
+                else "D"
+                if score >= 50
+                else "F"
             )
 
             console.print()
@@ -1097,14 +1105,10 @@ def tech_debt(
                 if verbose:
                     show_signals = signals
                 else:
-                    show_signals = [
-                        s for s in signals if s["severity"] in ("critical", "high")
-                    ]
+                    show_signals = [s for s in signals if s["severity"] in ("critical", "high")]
 
                 if show_signals:
-                    sig_table = Table(
-                        title="Priority Items" if not verbose else "All Signals"
-                    )
+                    sig_table = Table(title="Priority Items" if not verbose else "All Signals")
                     sig_table.add_column("Severity", style="bold")
                     sig_table.add_column("File")
                     sig_table.add_column("Message")
@@ -1197,12 +1201,17 @@ def opsec(
             print(json.dumps(findings, indent=2))  # noqa: T201
         else:
             # Score display
-            score_color = (
-                "green" if score >= 80 else "yellow" if score >= 50 else "red"
-            )
+            score_color = "green" if score >= 80 else "yellow" if score >= 50 else "red"
             grade = (
-                "A" if score >= 90 else "B" if score >= 80 else "C" if score >= 70
-                else "D" if score >= 50 else "F"
+                "A"
+                if score >= 90
+                else "B"
+                if score >= 80
+                else "C"
+                if score >= 70
+                else "D"
+                if score >= 50
+                else "F"
             )
 
             console.print()
@@ -1235,15 +1244,10 @@ def opsec(
                 if verbose:
                     show = all_findings
                 else:
-                    show = [
-                        f for f in all_findings
-                        if f["severity"] in ("critical", "high")
-                    ]
+                    show = [f for f in all_findings if f["severity"] in ("critical", "high")]
 
                 if show:
-                    tbl = Table(
-                        title="Priority Items" if not verbose else "All Findings"
-                    )
+                    tbl = Table(title="Priority Items" if not verbose else "All Findings")
                     tbl.add_column("Severity", style="bold")
                     tbl.add_column("File")
                     tbl.add_column("Message")
@@ -1337,9 +1341,7 @@ def github_health(
             print(json.dumps(findings, indent=2, default=str))  # noqa: T201
         else:
             health = findings.get("health_score", 0)
-            score_color = (
-                "green" if health >= 80 else "yellow" if health >= 50 else "red"
-            )
+            score_color = "green" if health >= 80 else "yellow" if health >= 50 else "red"
 
             console.print()
             console.print(
@@ -1482,9 +1484,7 @@ def cleanup(
 
         # Display plan
         if not output_json:
-            plan_table = Table(
-                title="Cleanup Plan" + (" [DRY RUN]" if not execute else "")
-            )
+            plan_table = Table(title="Cleanup Plan" + (" [DRY RUN]" if not execute else ""))
             plan_table.add_column("Action", style="bold")
             plan_table.add_column("Target")
             plan_table.add_column("Reason")
@@ -1509,8 +1509,7 @@ def cleanup(
         if not execute:
             if not output_json:
                 console.print(
-                    f"\n[dim]{plan.total} actions planned. "
-                    f"Run with --execute to apply.[/dim]"
+                    f"\n[dim]{plan.total} actions planned. Run with --execute to apply.[/dim]"
                 )
             return
 
@@ -1545,9 +1544,7 @@ def cleanup(
                 )
             )
         else:
-            console.print(
-                f"\n[green]Executed {plan.executed_count}/{plan.total} actions.[/green]"
-            )
+            console.print(f"\n[green]Executed {plan.executed_count}/{plan.total} actions.[/green]")
             if plan.error_count:
                 console.print(f"[red]{plan.error_count} errors:[/red]")
                 for action in plan.actions:

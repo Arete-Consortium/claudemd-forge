@@ -11,7 +11,6 @@ import difflib
 import re
 from dataclasses import dataclass
 
-
 _SECTION_HEADER = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.MULTILINE)
 _BULLET_TITLE = re.compile(r"^\s*[-*]\s+\*\*(?P<title>[^*]+)\*\*")
 
@@ -63,7 +62,6 @@ def _insert_position(content: str) -> int:
     Fall back to end-of-file.
     """
     for candidate in ("Dependencies", "Git Conventions", "Security", "CI/CD"):
-        match = _SECTION_HEADER.search(content)
         for m in _SECTION_HEADER.finditer(content):
             if m.group("title").lower().startswith(candidate.lower()):
                 return m.start()

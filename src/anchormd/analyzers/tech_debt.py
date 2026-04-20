@@ -106,7 +106,8 @@ class TechDebtAnalyzer:
         if config.source_roots:
             roots = tuple(r.strip("/").replace("\\", "/") for r in config.source_roots if r.strip())
             source_files = [
-                f for f in source_files
+                f
+                for f in source_files
                 if any(
                     str(f.path).replace("\\", "/").startswith(r + "/")
                     or str(f.path).replace("\\", "/") == r

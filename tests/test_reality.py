@@ -12,8 +12,7 @@ from anchormd.analyzers.reality import verify
 @pytest.fixture
 def project(tmp_path: Path) -> Path:
     (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\nversion = "1.2.3"\n'
-        'dependencies = ["typer>=0.9", "rich"]\n'
+        '[project]\nname = "demo"\nversion = "1.2.3"\ndependencies = ["typer>=0.9", "rich"]\n'
     )
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "app.py").write_text("# app")
@@ -47,13 +46,9 @@ def test_verify_detects_missing_file(project: Path) -> None:
 
 
 def test_verify_detects_unknown_dep(project: Path) -> None:
-    content = (
-        "## Dependencies\n- typer\n- fakepackage\n"
-    )
+    content = "## Dependencies\n- typer\n- fakepackage\n"
     report = verify(content, project)
-    assert any(
-        f.category == "unknown_dep" and "fakepackage" in f.claim for f in report.findings
-    )
+    assert any(f.category == "unknown_dep" and "fakepackage" in f.claim for f in report.findings)
 
 
 def test_verify_empty_claims(tmp_path: Path) -> None:

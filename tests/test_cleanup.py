@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from anchormd.cleanup import CleanupAction, CleanupAgent, CleanupPlan
+
+
+def _recent_iso(days_ago: int = 1) -> str:
+    """ISO timestamp relative to now — avoids hardcoded-date test rot."""
+    return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class TestCleanupPlan:
@@ -189,11 +195,12 @@ class TestCleanupAgentPlan:
         assert len(plan.actions) == 0
 
     def test_empty_when_no_stale(self) -> None:
+        fresh = _recent_iso(days_ago=1)
         mock_issues = [
             {
                 "number": 1,
                 "title": "Fresh",
-                "updatedAt": "2026-03-14T00:00:00Z",
+                "updatedAt": fresh,
                 "labels": [],
             },
         ]
@@ -201,7 +208,7 @@ class TestCleanupAgentPlan:
             {
                 "number": 1,
                 "title": "Fresh PR",
-                "updatedAt": "2026-03-14T00:00:00Z",
+                "updatedAt": fresh,
                 "isDraft": False,
             },
         ]

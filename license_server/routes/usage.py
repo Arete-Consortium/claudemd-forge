@@ -178,10 +178,7 @@ def record_usage(req: UsageRecordRequest, request: Request) -> UsageResponse | E
     conn.commit()
 
     used += 1
-    if limit == -1:
-        remaining = -1
-    else:
-        remaining = max(0, limit - used)
+    remaining = -1 if limit == -1 else max(0, limit - used)
 
     return UsageResponse(
         scan_type=req.scan_type,

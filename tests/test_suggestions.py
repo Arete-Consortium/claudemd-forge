@@ -10,7 +10,8 @@ from anchormd.analyzers.suggestions import (
 
 
 def test_edit_without_read_maps_to_suggestion() -> None:
-    s = suggest_for("Edit", "<tool_use_error>File has not been read yet. Read it first before writing.")
+    msg = "<tool_use_error>File has not been read yet. Read it first before writing."
+    s = suggest_for("Edit", msg)
     assert s is not None
     assert "Read before Edit" in s.title
 

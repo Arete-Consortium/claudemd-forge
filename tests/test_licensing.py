@@ -619,9 +619,7 @@ class TestStrictMode:
             assert info.metadata.get("degraded") is True
 
     def test_strict_disabled_by_default(self) -> None:
-        env_without_strict = {
-            k: v for k, v in os.environ.items() if k != "ANCHORMD_STRICT"
-        }
+        env_without_strict = {k: v for k, v in os.environ.items() if k != "ANCHORMD_STRICT"}
         with (
             patch.dict(os.environ, env_without_strict, clear=True),
             patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),

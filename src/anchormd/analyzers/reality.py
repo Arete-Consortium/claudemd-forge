@@ -142,7 +142,7 @@ def _project_deps(project_root: Path) -> set[str]:
         except json.JSONDecodeError:
             data = {}
         for key in ("dependencies", "devDependencies", "peerDependencies"):
-            for name in (data.get(key) or {}):
+            for name in data.get(key) or {}:
                 deps.add(name.lower())
 
     return deps

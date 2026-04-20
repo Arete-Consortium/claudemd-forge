@@ -106,9 +106,7 @@ def check_preset_access(preset_name: str) -> None:
     if not has_preset_access(preset_name):
         console = Console()
         console.print(f"[yellow]Preset '{preset_name}' requires AnchorMD Pro.[/yellow]")
-        console.print(
-            "[dim]Upgrade to Pro for premium presets: https://anchormd.dev/pro[/dim]"
-        )
+        console.print("[dim]Upgrade to Pro for premium presets: https://anchormd.dev/pro[/dim]")
         raise typer.Exit(1)
 
 

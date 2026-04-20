@@ -7,10 +7,7 @@ from anchormd.generators.patcher import patch
 
 def test_patch_appends_to_existing_section() -> None:
     content = (
-        "# demo\n\n"
-        "## Anti-Patterns\n"
-        "- **Existing rule** — already here\n\n"
-        "## Dependencies\n- foo\n"
+        "# demo\n\n## Anti-Patterns\n- **Existing rule** — already here\n\n## Dependencies\n- foo\n"
     )
     bullets = [
         "- **Always Read before Edit/Write** — Read first.",
@@ -46,9 +43,7 @@ def test_patch_creates_section_at_eof_if_no_anchor() -> None:
 
 
 def test_patch_nothing_to_add_returns_unchanged() -> None:
-    content = (
-        "# demo\n\n## Anti-Patterns\n- **X** — already here\n\n## Dependencies\n- foo\n"
-    )
+    content = "# demo\n\n## Anti-Patterns\n- **X** — already here\n\n## Dependencies\n- foo\n"
     bullets = ["- **X** — duplicate"]
     result = patch(content, bullets)
     assert result.changed is False

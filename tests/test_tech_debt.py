@@ -175,7 +175,8 @@ class TestSourceRoots:
         config = ForgeConfig(root_path=Path("/tmp/fake"), source_roots=["src"])
         result = TechDebtAnalyzer().analyze(structure, config)
         god_files = [
-            s for s in result.findings["signals"]
+            s
+            for s in result.findings["signals"]
             if s["category"] == "complexity" and "God file" in s["message"]
         ]
         assert len(god_files) == 1
@@ -186,7 +187,8 @@ class TestSourceRoots:
         config = ForgeConfig(root_path=Path("/tmp/fake"), source_roots=[])
         result = TechDebtAnalyzer().analyze(structure, config)
         god_files = [
-            s for s in result.findings["signals"]
+            s
+            for s in result.findings["signals"]
             if s["category"] == "complexity" and "God file" in s["message"]
         ]
         assert len(god_files) == 3
@@ -199,7 +201,8 @@ class TestSourceRoots:
         )
         result = TechDebtAnalyzer().analyze(structure, config)
         god_file_paths = {
-            s["file"] for s in result.findings["signals"]
+            s["file"]
+            for s in result.findings["signals"]
             if s["category"] == "complexity" and "God file" in s["message"]
         }
         assert god_file_paths == {"src/monster.py", "topics/kabbalah/essay.py"}
@@ -219,7 +222,8 @@ class TestSourceRoots:
         config = ForgeConfig(root_path=Path("/tmp/fake"), source_roots=["main.py"])
         result = TechDebtAnalyzer().analyze(structure, config)
         god_files = [
-            s for s in result.findings["signals"]
+            s
+            for s in result.findings["signals"]
             if s["category"] == "complexity" and "God file" in s["message"]
         ]
         assert len(god_files) == 1

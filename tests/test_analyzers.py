@@ -310,8 +310,14 @@ class TestRegistry:
         results = run_all(structure, config)
         categories = {r.category for r in results}
         assert categories == {
-            "language", "patterns", "commands", "domain", "skills",
-            "tech_debt", "github", "opsec",
+            "language",
+            "patterns",
+            "commands",
+            "domain",
+            "skills",
+            "tech_debt",
+            "github",
+            "opsec",
         }
 
     def test_all_valid_analysis_results(self, tmp_project: Path) -> None:
@@ -412,7 +418,7 @@ class TestOpsecAnalyzer:
 
     def test_skips_env_example(self, tmp_path: Path) -> None:
         src = tmp_path / ".env.example"
-        src.write_text('API_KEY=sk-ant-your-key-here\n')
+        src.write_text("API_KEY=sk-ant-your-key-here\n")
         structure, config = _scan(tmp_path)
         result = OpsecAnalyzer().analyze(structure, config)
         secrets = [f for f in result.findings["findings"] if f["category"] == "secrets"]
@@ -438,10 +444,7 @@ class TestOpsecAnalyzer:
         structure, config = _scan(tmp_path)
         result = OpsecAnalyzer().analyze(structure, config)
         found = result.findings["findings"]
-        assert any(
-            f["category"] == "credentials" and "Real .env" in f["message"]
-            for f in found
-        )
+        assert any(f["category"] == "credentials" and "Real .env" in f["message"] for f in found)
 
     def test_detects_private_key(self, tmp_path: Path) -> None:
         (tmp_path / "key.pem").write_text("-----BEGIN RSA PRIVATE KEY-----\nfoo\n")
@@ -451,9 +454,7 @@ class TestOpsecAnalyzer:
         assert any(f["message"] == "Private key material found in tracked file" for f in found)
 
     def test_detects_db_connection_string(self, tmp_path: Path) -> None:
-        (tmp_path / "config.py").write_text(
-            'DB_URL = "postgres://admin:s3cret@db.host:5432/app"\n'
-        )
+        (tmp_path / "config.py").write_text('DB_URL = "postgres://admin:s3cret@db.host:5432/app"\n')
         structure, config = _scan(tmp_path)
         result = OpsecAnalyzer().analyze(structure, config)
         found = result.findings["findings"]

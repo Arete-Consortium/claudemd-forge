@@ -24,10 +24,13 @@ class TestUsageCheck:
     def test_pro_has_10_deep_scans(self, client, db):
 
         key = _create_license(db, tier="pro")
-        resp = client.post("/v1/usage/check", json={
-            "license_key": key,
-            "scan_type": "deep_scan",
-        })
+        resp = client.post(
+            "/v1/usage/check",
+            json={
+                "license_key": key,
+                "scan_type": "deep_scan",
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["limit"] == 10
@@ -38,10 +41,13 @@ class TestUsageCheck:
     def test_pro_unlimited_audits(self, client, db):
 
         key = _create_license(db, tier="pro")
-        resp = client.post("/v1/usage/check", json={
-            "license_key": key,
-            "scan_type": "audit",
-        })
+        resp = client.post(
+            "/v1/usage/check",
+            json={
+                "license_key": key,
+                "scan_type": "audit",
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["limit"] == -1  # unlimited
@@ -49,10 +55,13 @@ class TestUsageCheck:
 
     def test_invalid_key_gets_free_tier(self, client):
 
-        resp = client.post("/v1/usage/check", json={
-            "license_key": "INVALID-KEY",
-            "scan_type": "deep_scan",
-        })
+        resp = client.post(
+            "/v1/usage/check",
+            json={
+                "license_key": "INVALID-KEY",
+                "scan_type": "deep_scan",
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["limit"] == 0
@@ -60,10 +69,13 @@ class TestUsageCheck:
 
     def test_free_tier_allows_1_audit(self, client):
 
-        resp = client.post("/v1/usage/check", json={
-            "license_key": "INVALID-KEY",
-            "scan_type": "audit",
-        })
+        resp = client.post(
+            "/v1/usage/check",
+            json={
+                "license_key": "INVALID-KEY",
+                "scan_type": "audit",
+            },
+        )
         body = resp.json()
         assert body["limit"] == 1
         assert body["allowed"] is True
@@ -75,11 +87,14 @@ class TestUsageRecord:
     def test_record_deep_scan(self, client, db):
 
         key = _create_license(db, tier="pro")
-        resp = client.post("/v1/usage", json={
-            "license_key": key,
-            "scan_type": "deep_scan",
-            "repo_fingerprint": "abc123",
-        })
+        resp = client.post(
+            "/v1/usage",
+            json={
+                "license_key": key,
+                "scan_type": "deep_scan",
+                "repo_fingerprint": "abc123",
+            },
+        )
         assert resp.status_code == 200
         body = resp.json()
         assert body["used"] == 1
@@ -92,19 +107,25 @@ class TestUsageRecord:
 
         # Use all 10 scans
         for i in range(10):
-            resp = client.post("/v1/usage", json={
-                "license_key": key,
-                "scan_type": "deep_scan",
-                "repo_fingerprint": f"repo-{i}",
-            })
+            resp = client.post(
+                "/v1/usage",
+                json={
+                    "license_key": key,
+                    "scan_type": "deep_scan",
+                    "repo_fingerprint": f"repo-{i}",
+                },
+            )
             assert resp.json()["allowed"] is True
 
         # 11th should be denied
-        resp = client.post("/v1/usage", json={
-            "license_key": key,
-            "scan_type": "deep_scan",
-            "repo_fingerprint": "repo-11",
-        })
+        resp = client.post(
+            "/v1/usage",
+            json={
+                "license_key": key,
+                "scan_type": "deep_scan",
+                "repo_fingerprint": "repo-11",
+            },
+        )
         body = resp.json()
         assert body["used"] == 10
         assert body["remaining"] == 0
@@ -113,10 +134,13 @@ class TestUsageRecord:
     def test_free_tier_no_deep_scans(self, client, db):
 
         key = _create_license(db, tier="free")
-        resp = client.post("/v1/usage", json={
-            "license_key": key,
-            "scan_type": "deep_scan",
-        })
+        resp = client.post(
+            "/v1/usage",
+            json={
+                "license_key": key,
+                "scan_type": "deep_scan",
+            },
+        )
         body = resp.json()
         assert body["allowed"] is False
         assert body["limit"] == 0
@@ -127,20 +151,26 @@ class TestUsageRecord:
 
         # Record many audits — should never be denied
         for i in range(20):
-            resp = client.post("/v1/usage", json={
-                "license_key": key,
-                "scan_type": "audit",
-                "repo_fingerprint": f"repo-{i}",
-            })
+            resp = client.post(
+                "/v1/usage",
+                json={
+                    "license_key": key,
+                    "scan_type": "audit",
+                    "repo_fingerprint": f"repo-{i}",
+                },
+            )
             assert resp.json()["allowed"] is True
 
     def test_usage_has_period(self, client, db):
 
         key = _create_license(db, tier="pro")
-        resp = client.post("/v1/usage", json={
-            "license_key": key,
-            "scan_type": "deep_scan",
-        })
+        resp = client.post(
+            "/v1/usage",
+            json={
+                "license_key": key,
+                "scan_type": "deep_scan",
+            },
+        )
         body = resp.json()
         assert len(body["period"]) == 7  # YYYY-MM format
         assert "-" in body["period"]

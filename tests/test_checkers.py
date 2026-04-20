@@ -245,9 +245,6 @@ class TestFreshnessChecker:
             total_files=1,
             total_lines=10,
         )
-        content = (
-            "Install via `packaging/systemd/razer-remap-daemon.service` "
-            "under `packaging/`.\n"
-        )
+        content = "Install via `packaging/systemd/razer-remap-daemon.service` under `packaging/`.\n"
         findings = checker.check(content, structure)
         assert len(findings) == 0

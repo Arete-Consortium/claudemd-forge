@@ -222,9 +222,7 @@ def _validate_key_checksum(key: str) -> bool:
     if parts[3] == _compute_check_segment(body, _KEY_SALT):
         return True
     # Try legacy salt for CMDF- keys
-    if parts[3] == _compute_check_segment(body, _LEGACY_KEY_SALT):
-        return True
-    return False
+    return parts[3] == _compute_check_segment(body, _LEGACY_KEY_SALT)
 
 
 def _find_license_key() -> str | None:
@@ -426,9 +424,7 @@ def get_license_info() -> LicenseInfo:
 
     # Step 5: Fall back to local-only validation.
     if _is_strict_mode():
-        logger.warning(
-            "Strict mode: refusing to grant Pro without server verification"
-        )
+        logger.warning("Strict mode: refusing to grant Pro without server verification")
         return LicenseInfo(
             tier=Tier.FREE,
             license_key=key,
@@ -484,7 +480,13 @@ def check_scan_quota(scan_type: str = "deep_scan") -> dict | None:
     """
     key = _find_license_key()
     if key is None:
-        return {"used": 0, "limit": 0, "remaining": 0, "allowed": scan_type == "audit", "period": ""}
+        return {
+            "used": 0,
+            "limit": 0,
+            "remaining": 0,
+            "allowed": scan_type == "audit",
+            "period": "",
+        }
 
     server_url = _get_license_server_url()
     if not server_url:
