@@ -190,6 +190,8 @@ def _init_db() -> None:
             conn.execute("ALTER TABLE scans ADD COLUMN stripe_session_id TEXT")
         if "email" not in existing_cols:
             conn.execute("ALTER TABLE scans ADD COLUMN email TEXT")
+        if "category_scores" not in existing_cols:
+            conn.execute("ALTER TABLE scans ADD COLUMN category_scores TEXT")
         # Migrate: add last_seen_at + access_token_encrypted to users if missing.
         user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
         if "last_seen_at" not in user_cols:
@@ -345,6 +347,7 @@ class ScanResponse(BaseModel):
     repo_url: str
     content: str | None = None
     score: int | None = None
+    category_scores: dict[str, Any] | None = None
     files_scanned: int = 0
     languages: dict[str, int] = Field(default_factory=dict)
     status: str = "pending"
@@ -540,11 +543,18 @@ def _run_scan(
                 (result.error, now, scan_id),
             )
         else:
+            # Surface category breakdown on the free tier so the overall
+            # number doesn't hide weak subcategories. Deep scan recomputes
+            # with real CVE data — the free version passes an empty
+            # vulnerability list, so Security/Deps reflect structural
+            # signals only (which is the upsell hook).
+            category_scores = _compute_category_scores(result.content or "", [])
             conn.execute(
                 """
                 UPDATE scans
                 SET status = 'complete', content = ?, score = ?,
-                    files_scanned = ?, languages = ?, completed_at = ?
+                    files_scanned = ?, languages = ?, completed_at = ?,
+                    category_scores = ?
                 WHERE scan_id = ?
                 """,
                 (
@@ -553,6 +563,7 @@ def _run_scan(
                     result.files_scanned,
                     json.dumps(result.languages),
                     now,
+                    json.dumps(category_scores),
                     scan_id,
                 ),
             )
@@ -986,11 +997,18 @@ async def get_scan(scan_id: str) -> ScanResponse:
     except (json.JSONDecodeError, TypeError):
         languages = {}
 
+    category_scores_raw = row_dict.get("category_scores")
+    try:
+        category_scores = json.loads(category_scores_raw) if category_scores_raw else None
+    except (json.JSONDecodeError, TypeError):
+        category_scores = None
+
     return ScanResponse(
         scan_id=row_dict["scan_id"],
         repo_url=row_dict["repo_url"],
         content=row_dict.get("content"),
         score=row_dict.get("score"),
+        category_scores=category_scores,
         files_scanned=row_dict.get("files_scanned", 0),
         languages=languages,
         status=row_dict["status"],

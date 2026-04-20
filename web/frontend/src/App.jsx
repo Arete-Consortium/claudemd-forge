@@ -71,10 +71,28 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function DeepScanCTA({ repoUrl, onCheckout }) {
+const GRADE_RANK = { A: 5, B: 4, C: 3, D: 2, F: 1 };
+
+function weakestCategory(categoryScores) {
+  if (!categoryScores?.categories) return null;
+  const entries = Object.entries(categoryScores.categories);
+  if (!entries.length) return null;
+  let weakest = entries[0];
+  for (const entry of entries) {
+    const [, cat] = entry;
+    const [, cur] = weakest;
+    if ((GRADE_RANK[cat.grade] ?? 5) < (GRADE_RANK[cur.grade] ?? 5)) weakest = entry;
+    else if (cat.grade === cur.grade && cat.score < cur.score) weakest = entry;
+  }
+  const [, worst] = weakest;
+  return worst;
+}
+
+function DeepScanCTA({ repoUrl, onCheckout, categoryScores }) {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ctaError, setCtaError] = useState(null);
+  const weakest = weakestCategory(categoryScores);
 
   const handleCheckout = async () => {
     if (!email.trim()) return;
@@ -93,21 +111,25 @@ function DeepScanCTA({ repoUrl, onCheckout }) {
     <div className="bg-gradient-to-r from-anchor-900/80 to-anchor-800/60 border-2 border-anchor-500/60 rounded-lg p-6 mt-4">
       <div className="flex flex-col gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-anchor-400 text-xl">&#128270;</span>
             <h3 className="text-white font-bold text-xl">
-              Unlock the Deep Report
+              {weakest
+                ? `See what's behind your ${weakest.grade} in ${weakest.label}`
+                : "Unlock the Deep Report"}
             </h3>
             <span className="bg-anchor-600/30 text-anchor-300 text-xs font-semibold px-2 py-0.5 rounded-full border border-anchor-500/40">
               $19 one-time
             </span>
           </div>
           <p className="text-gray-300 text-sm leading-relaxed">
-            Your free scan found the basics. The deep report adds{" "}
-            <span className="text-white font-medium">architecture recommendations</span>,{" "}
-            <span className="text-white font-medium">security review</span>,{" "}
-            <span className="text-white font-medium">dependency analysis</span>, and{" "}
-            <span className="text-white font-medium">actionable fix priorities</span>{" "}
+            The free scan shows structure. The Deep Report is a{" "}
+            <span className="text-white font-medium">PR-ready fix plan</span>:
+            ranked recommendations with{" "}
+            <span className="text-white font-medium">code diffs</span>, a{" "}
+            <span className="text-white font-medium">CVE dependency audit</span>, an{" "}
+            <span className="text-white font-medium">LLM architecture & security review</span>, and a{" "}
+            <span className="text-white font-medium">tech-debt register</span>{" "}
             — delivered to your inbox.
           </p>
         </div>
@@ -1145,11 +1167,35 @@ export default function App() {
                   </div>
                 </div>
 
+                {/* Category Breakdown — exposes weak subcategories hidden by the overall score */}
+                {result.category_scores?.categories && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <h3 className="text-white font-semibold">Category Breakdown</h3>
+                      <span className="text-gray-500 text-xs">
+                        (structural signals — Deep Report adds CVE & LLM review)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {Object.entries(result.category_scores.categories).map(([key, cat]) => (
+                        <div key={key} className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-gray-300 text-xs font-medium">{cat.label}</span>
+                            <GradeBadge grade={cat.grade} size="sm" />
+                          </div>
+                          <div className="text-xl font-bold text-white leading-tight">{cat.score}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Deep Scan CTA — shown above results for visibility */}
                 {result.scan_type !== "deep" && (
                   <DeepScanCTA
                     repoUrl={result.repo_url}
                     onCheckout={createDeepScanCheckout}
+                    categoryScores={result.category_scores}
                   />
                 )}
 
