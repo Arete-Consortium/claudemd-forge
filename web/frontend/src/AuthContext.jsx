@@ -11,9 +11,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-    if (code) {
+    const state = params.get("state");
+    if (code && state) {
       setLoading(true);
-      exchangeCode(code)
+      exchangeCode(code, state)
         .then((data) => {
           storeAuth(data.token, data.user);
           setUser(data.user);
@@ -24,6 +25,9 @@ export function AuthProvider({ children }) {
           console.error("OAuth callback failed:", err);
         })
         .finally(() => setLoading(false));
+    } else if (code) {
+      console.error("OAuth callback missing state");
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
 

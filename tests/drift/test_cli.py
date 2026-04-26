@@ -30,7 +30,19 @@ def _mock_free_license():
 
 
 def _mock_pro_license():
-    return patch(_LICENSING, return_value="ANMD-ABCD-EFGH-32E3")
+    from anchormd.licensing import LicenseInfo, Tier
+
+    return patch.multiple(
+        "anchormd.licensing",
+        _find_license_key=MagicMock(return_value="ANMD-ABCD-EFGH-32E3"),
+        _validate_with_server=MagicMock(
+            return_value=LicenseInfo(
+                tier=Tier.PRO,
+                license_key="ANMD-ABCD-EFGH-32E3",
+                valid=True,
+            )
+        ),
+    )
 
 
 def _make_run_record(score: float = 0.85) -> RunRecord:

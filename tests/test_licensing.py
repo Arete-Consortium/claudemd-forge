@@ -29,6 +29,12 @@ from anchormd.licensing import (
     is_pro,
 )
 
+_VALID_KEY = "ANMD-ABCD-EFGH-32E3"
+
+
+def _verified_pro_info() -> LicenseInfo:
+    return LicenseInfo(tier=Tier.PRO, license_key=_VALID_KEY, valid=True, email="test@test.com")
+
 
 class TestTierDefinitions:
     def test_free_tier_exists(self) -> None:
@@ -163,14 +169,14 @@ class TestLicenseDetection:
             assert info.valid is False
 
     def test_env_var_valid_key(self) -> None:
-        with patch(
-            "anchormd.licensing._find_license_key",
-            return_value="ANMD-ABCD-EFGH-32E3",
+        with (
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._validate_with_server", return_value=_verified_pro_info()),
         ):
             info = get_license_info()
             assert info.tier == Tier.PRO
             assert info.valid is True
-            assert info.license_key == "ANMD-ABCD-EFGH-32E3"
+            assert info.license_key == _VALID_KEY
 
     def test_invalid_key_stays_free(self) -> None:
         with patch(
@@ -219,9 +225,9 @@ class TestFeatureAccess:
             assert has_feature("diff") is False
 
     def test_pro_has_diff(self) -> None:
-        with patch(
-            "anchormd.licensing._find_license_key",
-            return_value="ANMD-ABCD-EFGH-32E3",
+        with (
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._validate_with_server", return_value=_verified_pro_info()),
         ):
             assert has_feature("diff") is True
 
@@ -242,9 +248,9 @@ class TestFeatureAccess:
             assert has_preset_access("data-science") is False
 
     def test_pro_has_premium_preset(self) -> None:
-        with patch(
-            "anchormd.licensing._find_license_key",
-            return_value="ANMD-ABCD-EFGH-32E3",
+        with (
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._validate_with_server", return_value=_verified_pro_info()),
         ):
             assert has_preset_access("react-native") is True
             assert has_preset_access("data-science") is True
@@ -259,9 +265,9 @@ class TestIsPro:
             assert is_pro() is False
 
     def test_pro_tier(self) -> None:
-        with patch(
-            "anchormd.licensing._find_license_key",
-            return_value="ANMD-ABCD-EFGH-32E3",
+        with (
+            patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
+            patch("anchormd.licensing._validate_with_server", return_value=_verified_pro_info()),
         ):
             assert is_pro() is True
 
@@ -299,8 +305,6 @@ class TestProFeatureConstants:
 
 
 # --- Server validation tests ---
-
-_VALID_KEY = "ANMD-ABCD-EFGH-32E3"
 
 
 class TestValidateWithServer:
@@ -547,7 +551,7 @@ class TestServerValidationPipeline:
             assert info.tier == Tier.PRO
             assert info.metadata.get("degraded") is True
 
-    def test_no_server_no_cache_falls_back_to_local(self) -> None:
+    def test_no_server_no_cache_stays_free_until_verified(self) -> None:
         with (
             patch("anchormd.licensing._find_license_key", return_value=_VALID_KEY),
             patch("anchormd.licensing._load_cache", return_value=None),

@@ -12,10 +12,11 @@ import secrets
 import sqlite3
 import time
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 import stripe
@@ -40,7 +41,9 @@ GITHUB_CLIENT_SECRET = os.environ.get("GITHUB_CLIENT_SECRET", "")
 ADMIN_GITHUB_USERNAME = os.environ.get("ADMIN_GITHUB_USERNAME", "").strip()
 
 # Fernet key(s) for encrypting GitHub access tokens at rest. Set via
-# `fly secrets set ANCHORMD_TOKEN_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")`
+# `fly secrets set ANCHORMD_TOKEN_KEY=$(
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+# )`
 # During rotation, supply comma-separated keys: new key first, old key second. The
 # first key is used for encryption; every key is tried for decryption. Once all
 # ciphertext has been re-encrypted by the new primary, drop the old key.
@@ -90,6 +93,7 @@ def _gh_token_for(user: dict[str, Any]) -> str:
         )
     return plain
 
+
 # Stripe configuration.
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
@@ -97,6 +101,9 @@ DEEP_SCAN_PRICE_CENTS = 1900  # $19.00 one-time
 SITE_URL = os.environ.get("SITE_URL", "https://anchormd.dev")
 LICENSE_SERVER_URL = os.environ.get("ANCHORMD_LICENSE_SERVER", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+OAUTH_REDIRECT_URI = os.environ.get("OAUTH_REDIRECT_URI", "https://anchormd.dev/")
+SESSION_TOKEN_BYTES = 32
+OAUTH_STATE_TTL_SECONDS = 600
 
 if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
@@ -137,7 +144,8 @@ def _init_db() -> None:
                 created_at TEXT NOT NULL,
                 completed_at TEXT,
                 user_id INTEGER,
-                batch_id TEXT
+                batch_id TEXT,
+                repo_private INTEGER DEFAULT 0
             )
         """)
         conn.execute("""
@@ -147,7 +155,14 @@ def _init_db() -> None:
                 username TEXT,
                 avatar_url TEXT,
                 access_token TEXT,
+                session_token_hash TEXT,
                 created_at REAL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS oauth_states (
+                state TEXT PRIMARY KEY,
+                created_at REAL NOT NULL
             )
         """)
         conn.execute("""
@@ -169,9 +184,7 @@ def _init_db() -> None:
                 revoked INTEGER NOT NULL DEFAULT 0
             )
         """)
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
         # Migrate: add expires_at if missing.
         session_cols = {row[1] for row in conn.execute("PRAGMA table_info(sessions)").fetchall()}
         if "expires_at" not in session_cols:
@@ -182,6 +195,8 @@ def _init_db() -> None:
             conn.execute("ALTER TABLE scans ADD COLUMN user_id INTEGER")
         if "batch_id" not in existing_cols:
             conn.execute("ALTER TABLE scans ADD COLUMN batch_id TEXT")
+        if "repo_private" not in existing_cols:
+            conn.execute("ALTER TABLE scans ADD COLUMN repo_private INTEGER DEFAULT 0")
         if "scan_type" not in existing_cols:
             conn.execute("ALTER TABLE scans ADD COLUMN scan_type TEXT DEFAULT 'free'")
         if "recommendations" not in existing_cols:
@@ -201,9 +216,7 @@ def _init_db() -> None:
         # One-shot: scrub legacy plaintext GitHub tokens so they're not recoverable
         # from the SQLite file. Users will need to re-authenticate (their bearer
         # token in localStorage is also invalid after this point).
-        conn.execute(
-            "UPDATE users SET access_token = NULL WHERE access_token IS NOT NULL"
-        )
+        conn.execute("UPDATE users SET access_token = NULL WHERE access_token IS NOT NULL")
         conn.commit()
     finally:
         conn.close()
@@ -246,12 +259,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), payment=(self \"https://checkout.stripe.com\"), usb=()",
+        "Permissions-Policy": (
+            "accelerometer=(), camera=(), geolocation=(), gyroscope=(), microphone=(), "
+            'payment=(self "https://checkout.stripe.com"), usb=()'
+        ),
         "Content-Security-Policy": (
             "default-src 'self'; "
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https://avatars.githubusercontent.com https://*.githubusercontent.com; "
+            "img-src 'self' data: https://avatars.githubusercontent.com "
+            "https://*.githubusercontent.com; "
             "font-src 'self' data:; "
             "connect-src 'self'; "
             "frame-ancestors 'none'; "
@@ -292,14 +309,36 @@ _GITHUB_URL_RE = re.compile(
     r"(?P<repo>[A-Za-z0-9._-]{1,100}?)"
     r"(?:\.git)?(?:/.*)?$"
 )
+_GITHUB_OWNER_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$")
+_GITHUB_REPO_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
 # Paths that live under github.com but aren't user repos.
-_GITHUB_RESERVED_OWNERS = frozenset({
-    "orgs", "search", "settings", "marketplace", "notifications",
-    "pulls", "issues", "stars", "explore", "topics", "trending",
-    "login", "logout", "sessions", "sponsors", "about", "features",
-    "enterprise", "pricing", "security", "contact", "api",
-})
+_GITHUB_RESERVED_OWNERS = frozenset(
+    {
+        "orgs",
+        "search",
+        "settings",
+        "marketplace",
+        "notifications",
+        "pulls",
+        "issues",
+        "stars",
+        "explore",
+        "topics",
+        "trending",
+        "login",
+        "logout",
+        "sessions",
+        "sponsors",
+        "about",
+        "features",
+        "enterprise",
+        "pricing",
+        "security",
+        "contact",
+        "api",
+    }
+)
 
 
 def _validate_github_url(value: str) -> str:
@@ -437,6 +476,73 @@ class AdminMetrics(BaseModel):
     recent_scans: list[dict[str, Any]]
 
 
+def _hash_session_token(token: str) -> str:
+    """Store session tokens as hashes so the database doesn't hold bearer secrets."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _create_session_token() -> str:
+    """Generate a new opaque app session token."""
+    return secrets.token_urlsafe(SESSION_TOKEN_BYTES)
+
+
+def _extract_repo_coordinates(repo_url: str) -> tuple[str, str]:
+    """Parse owner/repo from a GitHub URL or git URL."""
+    parts = [p for p in urlparse(repo_url).path.strip("/").split("/") if p]
+    if len(parts) < 2:
+        raise ValueError("Cannot parse repo from URL")
+    return parts[0], parts[1].replace(".git", "")
+
+
+async def _fetch_repo_metadata(repo_url: str, token: str | None = None) -> dict[str, Any]:
+    """Fetch repo visibility and canonical URL from GitHub."""
+    try:
+        normalized = _validate_github_url(repo_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    owner, repo = _extract_repo_coordinates(normalized)
+    if not _GITHUB_OWNER_RE.fullmatch(owner) or not _GITHUB_REPO_RE.fullmatch(repo):
+        raise HTTPException(status_code=400, detail="Invalid repository path")
+    github_api_url = f"https://api.github.com/repos/{owner}/{repo}"
+    headers = {"Accept": "application/vnd.github+json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(github_api_url, headers=headers, follow_redirects=False)
+
+    if resp.status_code == 404:
+        raise HTTPException(status_code=404, detail="Repository not found")
+    if resp.status_code == 403:
+        raise HTTPException(status_code=403, detail="Repository is not accessible")
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Failed to inspect repository")
+
+    payload = resp.json()
+    return {
+        "repo_url": payload["html_url"],
+        "private": bool(payload.get("private", False)),
+        "default_branch": payload.get("default_branch"),
+    }
+
+
+def _get_scan_row(scan_id: str) -> sqlite3.Row | None:
+    """Load a scan row by ID."""
+    conn = _get_db()
+    try:
+        return conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def _ensure_scan_access(row: sqlite3.Row, user: dict[str, Any] | None) -> dict[str, Any]:
+    """Enforce access rules for public and private scan results."""
+    row_dict = dict(row)
+    if row_dict.get("repo_private") and row_dict.get("user_id") != (user or {}).get("id"):
+        raise HTTPException(status_code=403, detail="This scan belongs to another user")
+    return row_dict
+
+
 # --- Auth Helpers ---
 
 
@@ -485,9 +591,7 @@ async def _get_current_user(request: Request) -> dict[str, Any] | None:
                 (now, token_hash),
             )
         conn.commit()
-        row = conn.execute(
-            "SELECT * FROM users WHERE id = ?", (session["user_id"],)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
         if row:
             return dict(row)
     finally:
@@ -619,11 +723,26 @@ async def github_login(request: Request) -> dict[str, str]:
     """Return the GitHub OAuth authorize URL."""
     if not GITHUB_CLIENT_ID:
         raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
-    redirect_uri = os.environ.get("OAUTH_REDIRECT_URI", "https://anchormd.dev/")
+    state = secrets.token_urlsafe(24)
+    conn = _get_db()
+    try:
+        conn.execute(
+            "INSERT INTO oauth_states (state, created_at) VALUES (?, ?)",
+            (state, time.time()),
+        )
+        conn.execute(
+            "DELETE FROM oauth_states WHERE created_at < ?",
+            (time.time() - OAUTH_STATE_TTL_SECONDS,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
     url = (
         f"https://github.com/login/oauth/authorize"
         f"?client_id={GITHUB_CLIENT_ID}"
-        f"&redirect_uri={redirect_uri}"
+        f"&redirect_uri={OAUTH_REDIRECT_URI}"
+        f"&state={state}"
         f"&scope=repo,read:user"
     )
     return {"url": url}
@@ -631,10 +750,27 @@ async def github_login(request: Request) -> dict[str, str]:
 
 @app.get("/api/auth/callback")
 @limiter.limit("10/minute")
-async def github_callback(request: Request, code: str) -> dict[str, Any]:
+async def github_callback(request: Request, code: str, state: str) -> dict[str, Any]:
     """Exchange GitHub OAuth code for access token and upsert user."""
     if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="GitHub OAuth not configured")
+
+    conn = _get_db()
+    try:
+        state_row = conn.execute(
+            "SELECT state, created_at FROM oauth_states WHERE state = ?",
+            (state,),
+        ).fetchone()
+        if not state_row:
+            raise HTTPException(status_code=400, detail="Invalid OAuth state")
+        if time.time() - state_row["created_at"] > OAUTH_STATE_TTL_SECONDS:
+            conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+            conn.commit()
+            raise HTTPException(status_code=400, detail="Expired OAuth state")
+        conn.execute("DELETE FROM oauth_states WHERE state = ?", (state,))
+        conn.commit()
+    finally:
+        conn.close()
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         # Exchange code for token.
@@ -866,16 +1002,28 @@ def _repo_fingerprint(repo_url: str) -> str:
 # --- Free Scan Caching ---
 
 
-def _get_cached_free_scan(repo_url: str) -> dict | None:
-    """Return a cached free scan for a repo if one exists and completed."""
+def _get_cached_free_scan(repo_url: str, user_id: int | None, repo_private: bool) -> dict | None:
+    """Return a cached free scan when it is safe to reuse."""
     conn = _get_db()
     try:
-        row = conn.execute(
-            "SELECT scan_id, status, content, score FROM scans "
-            "WHERE repo_url = ? AND scan_type = 'free' AND status = 'complete' "
-            "ORDER BY created_at DESC LIMIT 1",
-            (repo_url,),
-        ).fetchone()
+        if repo_private:
+            if user_id is None:
+                return None
+            row = conn.execute(
+                "SELECT scan_id, status FROM scans "
+                "WHERE repo_url = ? AND scan_type = 'free' AND status = 'complete' "
+                "AND repo_private = 1 AND user_id = ? "
+                "ORDER BY created_at DESC LIMIT 1",
+                (repo_url, user_id),
+            ).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT scan_id, status FROM scans "
+                "WHERE repo_url = ? AND scan_type = 'free' AND status = 'complete' "
+                "AND repo_private = 0 "
+                "ORDER BY created_at DESC LIMIT 1",
+                (repo_url,),
+            ).fetchone()
         if row:
             return {"scan_id": row["scan_id"], "status": row["status"], "cached": True}
     finally:
@@ -924,13 +1072,16 @@ async def create_scan(
     user = await _get_current_user(request)
     user_id = user["id"] if user else None
     token = _decrypt_token(user.get("access_token_encrypted")) if user else None
+    repo = await _fetch_repo_metadata(payload.repo_url, token=token)
+    canonical_repo_url = repo["repo_url"]
+    repo_private = bool(repo["private"])
 
     # Return cached result for repeat free scans of the same repo
-    cached = _get_cached_free_scan(payload.repo_url)
+    cached = _get_cached_free_scan(canonical_repo_url, user_id, repo_private)
     if cached:
         return ScanResponse(
             scan_id=cached["scan_id"],
-            repo_url=payload.repo_url,
+            repo_url=canonical_repo_url,
             status="complete",
             created_at="",
         )
@@ -940,57 +1091,53 @@ async def create_scan(
     # a duplicate job. A client hitting the same URL repeatedly — whether
     # a user double-clicking or a script in a tight loop — gets the same
     # scan_id back and can poll that one.
-    inflight = _find_recent_inflight_scan(payload.repo_url)
+    inflight = _find_recent_inflight_scan(canonical_repo_url)
     if inflight:
         return ScanResponse(
             scan_id=inflight["scan_id"],
-            repo_url=payload.repo_url,
+            repo_url=canonical_repo_url,
             status=inflight["status"],
             error=inflight.get("error"),
             created_at=inflight["created_at"],
         )
 
-    scan_id = _make_scan_id(payload.repo_url)
+    scan_id = _make_scan_id(canonical_repo_url)
     now = datetime.now(UTC).isoformat()
 
     conn = _get_db()
     try:
         conn.execute(
             """
-            INSERT INTO scans (scan_id, repo_url, status, created_at, user_id)
-            VALUES (?, ?, 'pending', ?, ?)
+            INSERT INTO scans (scan_id, repo_url, status, created_at, user_id, repo_private)
+            VALUES (?, ?, 'pending', ?, ?, ?)
             """,
-            (scan_id, payload.repo_url, now, user_id),
+            (scan_id, canonical_repo_url, now, user_id, int(repo_private)),
         )
         conn.commit()
     finally:
         conn.close()
 
-    background_tasks.add_task(_run_scan, scan_id, payload.repo_url, token)
+    background_tasks.add_task(_run_scan, scan_id, canonical_repo_url, token)
 
     return ScanResponse(
         scan_id=scan_id,
-        repo_url=payload.repo_url,
+        repo_url=canonical_repo_url,
         status="pending",
         created_at=now,
     )
 
 
 @app.get("/api/scan/{scan_id}", response_model=ScanResponse)
-async def get_scan(scan_id: str) -> ScanResponse:
+async def get_scan(scan_id: str, request: Request) -> ScanResponse:
     """Retrieve a previous scan result."""
     import json
 
-    conn = _get_db()
-    try:
-        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
-    finally:
-        conn.close()
-
+    user = await _get_current_user(request)
+    row = _get_scan_row(scan_id)
     if not row:
         raise HTTPException(status_code=404, detail="Scan not found")
 
-    row_dict = dict(row)
+    row_dict = _ensure_scan_access(row, user)
     languages_raw = row_dict.get("languages", "{}")
     try:
         languages = json.loads(languages_raw) if languages_raw else {}
@@ -1036,7 +1183,6 @@ async def scan_all(
     Repos with a previous score of 100 that haven't been pushed to since the
     last scan are skipped and their cached result is reused.
     """
-    import json as _json
 
     token = _gh_token_for(user)
     repos = await _fetch_all_repos(token)
@@ -1109,13 +1255,21 @@ async def scan_all(
                 """
                 INSERT INTO scans (scan_id, repo_url, status, score, content,
                     files_scanned, languages, created_at, completed_at,
-                    user_id, batch_id)
-                VALUES (?, ?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?)
+                    user_id, batch_id, repo_private)
+                VALUES (?, ?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    scan_id, url, cached["score"], cached["content"],
-                    cached["files_scanned"], cached["languages"],
-                    now_iso, now_iso, user["id"], batch_id,
+                    scan_id,
+                    url,
+                    cached["score"],
+                    cached["content"],
+                    cached["files_scanned"],
+                    cached["languages"],
+                    now_iso,
+                    now_iso,
+                    user["id"],
+                    batch_id,
+                    int(repo["private"]),
                 ),
             )
 
@@ -1126,10 +1280,12 @@ async def scan_all(
             scan_ids.append(scan_id)
             conn.execute(
                 """
-                INSERT INTO scans (scan_id, repo_url, status, created_at, user_id, batch_id)
-                VALUES (?, ?, 'pending', ?, ?, ?)
+                INSERT INTO scans (
+                    scan_id, repo_url, status, created_at, user_id, batch_id, repo_private
+                )
+                VALUES (?, ?, 'pending', ?, ?, ?, ?)
                 """,
-                (scan_id, repo["html_url"], now_iso, user["id"], batch_id),
+                (scan_id, repo["html_url"], now_iso, user["id"], batch_id, int(repo["private"])),
             )
         conn.commit()
     finally:
@@ -1233,8 +1389,13 @@ def _parse_dependencies(repo_path: Path) -> list[dict[str, str]]:
             for sep in ("==", ">=", "<=", "~=", "!=", ">", "<"):
                 if sep in line:
                     name, version = line.split(sep, 1)
-                    deps.append({"name": name.strip(), "version": version.strip().split(",")[0],
-                                 "ecosystem": "PyPI"})
+                    deps.append(
+                        {
+                            "name": name.strip(),
+                            "version": version.strip().split(",")[0],
+                            "ecosystem": "PyPI",
+                        }
+                    )
                     break
             else:
                 if line and not line.startswith("git+"):
@@ -1263,12 +1424,22 @@ def _parse_dependencies(repo_path: Path) -> list[dict[str, str]]:
                         for sep in ("==", ">=", "<=", "~=", "!="):
                             if sep in dep_str:
                                 name, ver = dep_str.split(sep, 1)
-                                deps.append({"name": name.strip(), "version": ver.strip().split(",")[0],
-                                             "ecosystem": "PyPI"})
+                                deps.append(
+                                    {
+                                        "name": name.strip(),
+                                        "version": ver.strip().split(",")[0],
+                                        "ecosystem": "PyPI",
+                                    }
+                                )
                                 break
                         else:
-                            deps.append({"name": dep_str.split(">")[0].split("<")[0].strip(),
-                                         "version": "", "ecosystem": "PyPI"})
+                            deps.append(
+                                {
+                                    "name": dep_str.split(">")[0].split("<")[0].strip(),
+                                    "version": "",
+                                    "ecosystem": "PyPI",
+                                }
+                            )
         except Exception:
             pass
 
@@ -1375,14 +1546,18 @@ def _check_vulnerabilities(deps: list[dict[str, str]]) -> dict[str, Any]:
                         if "fixed" in ev:
                             fix_version = ev["fixed"]
 
-            vulns.append({
-                "package": queryable[i]["name"],
-                "version": queryable[i]["version"],
-                "cve_id": vuln.get("aliases", [vuln.get("id", "")])[0] if vuln.get("aliases") else vuln.get("id", ""),
-                "severity": severity,
-                "summary": vuln.get("summary", "No description available")[:200],
-                "fix_version": fix_version,
-            })
+            vulns.append(
+                {
+                    "package": queryable[i]["name"],
+                    "version": queryable[i]["version"],
+                    "cve_id": vuln.get("aliases", [vuln.get("id", "")])[0]
+                    if vuln.get("aliases")
+                    else vuln.get("id", ""),
+                    "severity": severity,
+                    "summary": vuln.get("summary", "No description available")[:200],
+                    "fix_version": fix_version,
+                }
+            )
 
     return {
         "total_packages": len(deps),
@@ -1392,7 +1567,9 @@ def _check_vulnerabilities(deps: list[dict[str, str]]) -> dict[str, Any]:
 
 
 def _run_llm_analysis(
-    claude_md: str, file_tree: str, dep_audit: dict[str, Any],
+    claude_md: str,
+    file_tree: str,
+    dep_audit: dict[str, Any],
     tech_debt_signals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Send CLAUDE.md + context to Claude for architecture/security analysis."""
@@ -1406,9 +1583,23 @@ def _run_llm_analysis(
     debt_summary = ""
     if tech_debt_signals:
         for s in tech_debt_signals[:20]:
-            debt_summary += f"- [{s['severity']}] {s['file']}:{s.get('line', '?')} — {s['message']}\n"
+            debt_summary += (
+                f"- [{s['severity']}] {s['file']}:{s.get('line', '?')} — {s['message']}\n"
+            )
 
-    prompt = f"""Analyze this repository. You are a senior engineer doing a paid code review. Be specific, reference actual files, and include code examples for every recommendation.
+    vuln_section = (
+        f"## Known Vulnerabilities{chr(10)}{vuln_summary}"
+        if vuln_summary
+        else "No known vulnerabilities found."
+    )
+    debt_section = (
+        f"## Tech Debt Signals{chr(10)}{debt_summary}"
+        if debt_summary
+        else "No significant tech debt signals."
+    )
+
+    prompt = f"""Analyze this repository. You are a senior engineer doing a paid code review.
+Be specific, reference actual files, and include code examples for every recommendation.
 
 ## File Tree
 ```
@@ -1420,14 +1611,18 @@ def _run_llm_analysis(
 {claude_md[:6000]}
 ```
 
-{f"## Known Vulnerabilities{chr(10)}{vuln_summary}" if vuln_summary else "No known vulnerabilities found."}
+{vuln_section}
 
-{f"## Tech Debt Signals{chr(10)}{debt_summary}" if debt_summary else "No significant tech debt signals."}
+{debt_section}
 
 Respond in this exact JSON format:
 {{
-  "architecture": "2-3 paragraph assessment of the project architecture, organization, and patterns. Reference specific directories and files. Identify strengths and weaknesses.",
-  "security": "2-3 paragraph security review. Cover credential handling, input validation, dependency risks, and specific concerns from the file tree and code structure.",
+  "architecture": "2-3 paragraph assessment of the project architecture, organization,
+                   and patterns. Reference specific directories and files.
+                   Identify strengths and weaknesses.",
+  "security": "2-3 paragraph security review. Cover credential handling,
+               input validation, dependency risks, and specific concerns from
+               the file tree and code structure.",
   "improvements": [
     {{
       "priority": "high|medium|low",
@@ -1442,9 +1637,11 @@ Respond in this exact JSON format:
 }}
 
 Rules:
-- Every improvement MUST include code_before/code_after showing the actual fix (use null for code_before only when recommending adding a new file)
+- Every improvement MUST include code_before/code_after showing the actual fix
+  (use null for code_before only when recommending adding a new file)
 - Reference real files from the tree, not hypothetical ones
-- No generic advice like "add tests" — specify WHICH code needs testing and show a test skeleton
+- No generic advice like "add tests" — specify WHICH code needs testing and show
+  a test skeleton
 - Be direct and opinionated"""
 
     try:
@@ -1499,26 +1696,39 @@ def _check_compliance(repo_path: Path) -> dict[str, Any]:
         if name == "Lock file":
             found = any(
                 (repo_path / f).exists()
-                for f in ("package-lock.json", "yarn.lock", "pnpm-lock.yaml",
-                          "Pipfile.lock", "poetry.lock", "Cargo.lock", "uv.lock")
+                for f in (
+                    "package-lock.json",
+                    "yarn.lock",
+                    "pnpm-lock.yaml",
+                    "Pipfile.lock",
+                    "poetry.lock",
+                    "Cargo.lock",
+                    "uv.lock",
+                )
             )
         elif name == "Type config":
             found = any(
                 (repo_path / f).exists()
-                for f in ("tsconfig.json", "mypy.ini", "pyrightconfig.json",
-                          "pyproject.toml")  # pyproject often has [tool.mypy]
+                for f in (
+                    "tsconfig.json",
+                    "mypy.ini",
+                    "pyrightconfig.json",
+                    "pyproject.toml",
+                )  # pyproject often has [tool.mypy]
             )
         elif check["path"]:
             found = bool(_glob.glob(str(repo_path / check["path"])))
         else:
             found = False
 
-        results.append({
-            "name": name,
-            "label": check["label"],
-            "found": found,
-            "weight": check["weight"],
-        })
+        results.append(
+            {
+                "name": name,
+                "label": check["label"],
+                "found": found,
+                "weight": check["weight"],
+            }
+        )
 
     passed = sum(1 for r in results if r["found"])
     total = len(results)
@@ -1530,22 +1740,24 @@ def _check_compliance(repo_path: Path) -> dict[str, Any]:
 def _run_context_hygiene(claude_md: str) -> dict[str, Any]:
     """Run context-hygiene analysis on the generated CLAUDE.md."""
     try:
+        from context_hygiene.contradictions import contradictions_fast
+        from context_hygiene.deadweight import deadweight_fast
         from context_hygiene.models import Segment
         from context_hygiene.staleness import staleness_fast
-        from context_hygiene.deadweight import deadweight_fast
-        from context_hygiene.contradictions import contradictions_fast
 
         # Treat each major section as a segment
         sections = claude_md.split("\n## ")
         segments = []
         for i, section in enumerate(sections):
             text = section if i == 0 else f"## {section}"
-            segments.append(Segment(
-                index=i,
-                role="assistant",
-                content=text,
-                token_estimate=len(text.split()),
-            ))
+            segments.append(
+                Segment(
+                    index=i,
+                    role="assistant",
+                    content=text,
+                    token_estimate=len(text.split()),
+                )
+            )
 
         if not segments:
             return {"error": "No content to analyze"}
@@ -1556,16 +1768,21 @@ def _run_context_hygiene(claude_md: str) -> dict[str, Any]:
 
         stale_issues = [
             {"section": s.segment_index, "score": round(s.score, 2), "reasons": s.reasons}
-            for s in stale if s.score > 0.3
+            for s in stale
+            if s.score > 0.3
         ]
         dead_issues = [
-            {"section": d.segment_index, "reason": d.reason,
-             "tokens_recoverable": d.tokens_recoverable}
+            {
+                "section": d.segment_index,
+                "reason": d.reason,
+                "tokens_recoverable": d.tokens_recoverable,
+            }
             for d in dead
         ]
         contradiction_issues = [
             {"description": c.description, "confidence": round(c.confidence, 2)}
-            for c in contradictions if c.confidence > 0.5
+            for c in contradictions
+            if c.confidence > 0.5
         ]
 
         total_issues = len(stale_issues) + len(dead_issues) + len(contradiction_issues)
@@ -1614,10 +1831,8 @@ def _get_scan_history(repo_url: str, current_scan_id: str) -> dict[str, Any] | N
 
     prev = dict(row)
     prev_recs = {}
-    try:
+    with suppress(json_module.JSONDecodeError, TypeError):
         prev_recs = json_module.loads(prev.get("recommendations", "{}"))
-    except (json_module.JSONDecodeError, TypeError):
-        pass
 
     prev_scores = prev_recs.get("category_scores", {}) if isinstance(prev_recs, dict) else {}
     return {
@@ -1628,9 +1843,7 @@ def _get_scan_history(repo_url: str, current_scan_id: str) -> dict[str, Any] | N
     }
 
 
-def _compute_category_scores(
-    content: str, vulnerabilities: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _compute_category_scores(content: str, vulnerabilities: list[dict[str, Any]]) -> dict[str, Any]:
     """Compute category scores with letter grades for the deep scan report."""
 
     def _grade(score: int) -> str:
@@ -1690,7 +1903,11 @@ def _compute_category_scores(
     deps_score = 50  # base
     if "## Dependencies" in content or "## Tech Stack" in content:
         deps_score += 20
-    if "requirements" in content_lower or "package.json" in content_lower or "pyproject" in content_lower:
+    if (
+        "requirements" in content_lower
+        or "package.json" in content_lower
+        or "pyproject" in content_lower
+    ):
         deps_score += 15
     # Penalty for vulnerabilities
     deps_score -= crit_count * 20 + med_count * 8
@@ -1762,7 +1979,6 @@ def _run_deep_scan(scan_id: str, repo_url: str) -> None:
     import tempfile
 
     from anchormd.analyzers import run_all
-    from anchormd.analyzers.tech_debt import TechDebtAnalyzer
     from anchormd.generators.composer import DocumentComposer
     from anchormd.models import ForgeConfig
     from anchormd.scanner import CodebaseScanner
@@ -1789,7 +2005,6 @@ def _run_deep_scan(scan_id: str, repo_url: str) -> None:
         analyses = run_all(structure, config)
         composer = DocumentComposer(config)
         content = composer.compose(structure, analyses)
-        score = composer.estimate_quality_score(content)
 
         # Extract tech debt signals from analyzer results
         for analysis in analyses:
@@ -1902,6 +2117,8 @@ async def create_deep_scan_checkout(
     if not STRIPE_SECRET_KEY:
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
+    await _fetch_repo_metadata(payload.repo_url)
+
     # Pre-create the scan record so we have an ID for the success URL.
     scan_id = _make_scan_id(payload.repo_url)
     now = datetime.now(UTC).isoformat()
@@ -1910,8 +2127,10 @@ async def create_deep_scan_checkout(
     try:
         conn.execute(
             """
-            INSERT INTO scans (scan_id, repo_url, status, created_at, scan_type, email)
-            VALUES (?, ?, 'awaiting_payment', ?, 'deep', ?)
+            INSERT INTO scans (
+                scan_id, repo_url, status, created_at, scan_type, email, repo_private
+            )
+            VALUES (?, ?, 'awaiting_payment', ?, 'deep', ?, ?)
             """,
             (scan_id, payload.repo_url, now, payload.email),
         )
@@ -1979,7 +2198,7 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks) ->
     sig_header = request.headers.get("stripe-signature", "")
 
     try:
-        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+        stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
     except ValueError as exc:
         print(f"Stripe webhook: invalid payload: {exc}")
         raise HTTPException(status_code=400, detail="Invalid payload") from exc
@@ -2028,18 +2247,14 @@ async def stripe_webhook(request: Request, background_tasks: BackgroundTasks) ->
 
 
 @app.get("/api/scan/{scan_id}/report", response_model=DeepScanReport)
-async def get_deep_scan_report(scan_id: str) -> DeepScanReport:
+async def get_deep_scan_report(scan_id: str, request: Request) -> DeepScanReport:
     """Retrieve a deep scan report. Only available for paid deep scans."""
-    conn = _get_db()
-    try:
-        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
-    finally:
-        conn.close()
-
+    user = await _get_current_user(request)
+    row = _get_scan_row(scan_id)
     if not row:
         raise HTTPException(status_code=404, detail="Scan not found")
 
-    row_dict = dict(row)
+    row_dict = _ensure_scan_access(row, user)
 
     if row_dict.get("scan_type") != "deep":
         raise HTTPException(status_code=403, detail="Deep scan report requires payment")
@@ -2129,16 +2344,11 @@ async def push_pr(
     import base64
 
     # Get the scan result.
-    conn = _get_db()
-    try:
-        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
-    finally:
-        conn.close()
-
+    row = _get_scan_row(scan_id)
     if not row:
         raise HTTPException(status_code=404, detail="Scan not found")
 
-    row_dict = dict(row)
+    row_dict = _ensure_scan_access(row, user)
     if row_dict["status"] != "complete" or not row_dict.get("content"):
         raise HTTPException(status_code=400, detail="Scan not complete or has no content")
 
@@ -2357,21 +2567,17 @@ async def admin_metrics(
 
 
 @app.get("/api/scan/{scan_id}/fix-report")
-async def get_fix_report(scan_id: str) -> dict[str, Any]:
+async def get_fix_report(scan_id: str, request: Request) -> dict[str, Any]:
     """Generate a downloadable fix report with gap analysis and instructions."""
     import json
     import re
 
-    conn = _get_db()
-    try:
-        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
-    finally:
-        conn.close()
-
+    user = await _get_current_user(request)
+    row = _get_scan_row(scan_id)
     if not row:
         raise HTTPException(status_code=404, detail="Scan not found")
 
-    row_dict = dict(row)
+    row_dict = _ensure_scan_access(row, user)
     if row_dict["status"] != "complete":
         raise HTTPException(status_code=400, detail="Scan not complete")
 
@@ -2408,7 +2614,11 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
 
     # Calculate sub-scores
     section_score = int((len(present_headings) / len(expected_headings)) * 60)
-    depth_score = (10 if line_count > 50 else 0) + (5 if line_count > 100 else 0) + (5 if line_count > 150 else 0)
+    depth_score = (
+        (10 if line_count > 50 else 0)
+        + (5 if line_count > 100 else 0)
+        + (5 if line_count > 150 else 0)
+    )
     code_score = 10 if code_block_count >= 2 else (5 if code_block_count >= 1 else 0)
     spec_score = 10 if bold_bullets > 5 else (5 if bold_bullets > 2 else 0)
 
@@ -2417,52 +2627,66 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
 
     for heading in missing_headings:
         pts = round(60 / len(expected_headings))
-        actions.append({
-            "priority": "high" if pts >= 6 else "medium",
-            "action": f"Add `## {heading}` section",
-            "points": pts,
-            "category": "sections",
-        })
+        actions.append(
+            {
+                "priority": "high" if pts >= 6 else "medium",
+                "action": f"Add `## {heading}` section",
+                "points": pts,
+                "category": "sections",
+            }
+        )
 
     if line_count <= 50:
-        actions.append({
-            "priority": "high",
-            "action": "Expand content to 150+ lines for full depth score (+20 pts)",
-            "points": 20,
-            "category": "depth",
-        })
+        actions.append(
+            {
+                "priority": "high",
+                "action": "Expand content to 150+ lines for full depth score (+20 pts)",
+                "points": 20,
+                "category": "depth",
+            }
+        )
     elif line_count <= 100:
-        actions.append({
-            "priority": "medium",
-            "action": "Expand content to 150+ lines (+10 pts remaining)",
-            "points": 10,
-            "category": "depth",
-        })
+        actions.append(
+            {
+                "priority": "medium",
+                "action": "Expand content to 150+ lines (+10 pts remaining)",
+                "points": 10,
+                "category": "depth",
+            }
+        )
     elif line_count <= 150:
-        actions.append({
-            "priority": "low",
-            "action": "Expand content past 150 lines (+5 pts remaining)",
-            "points": 5,
-            "category": "depth",
-        })
+        actions.append(
+            {
+                "priority": "low",
+                "action": "Expand content past 150 lines (+5 pts remaining)",
+                "points": 5,
+                "category": "depth",
+            }
+        )
 
     if code_block_count < 2:
         pts = 10 - code_score
-        actions.append({
-            "priority": "medium",
-            "action": f"Add code blocks (need {2 - code_block_count} more) for full code score",
-            "points": pts,
-            "category": "code_blocks",
-        })
+        actions.append(
+            {
+                "priority": "medium",
+                "action": f"Add code blocks (need {2 - code_block_count} more) for full code score",
+                "points": pts,
+                "category": "code_blocks",
+            }
+        )
 
     if bold_bullets <= 5:
         pts = 10 - spec_score
-        actions.append({
-            "priority": "medium",
-            "action": f"Add bold-label bullets (`- **Key**: value`) — need {6 - bold_bullets} more",
-            "points": pts,
-            "category": "specificity",
-        })
+        actions.append(
+            {
+                "priority": "medium",
+                "action": (
+                    f"Add bold-label bullets (`- **Key**: value`) — need {6 - bold_bullets} more"
+                ),
+                "points": pts,
+                "category": "specificity",
+            }
+        )
 
     actions.sort(key=lambda a: a["points"], reverse=True)
 
@@ -2470,7 +2694,8 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
     section_templates = {
         "Project Overview": (
             "## Project Overview\n\n"
-            "One-paragraph description of what this project does, who it's for, and its current maturity.\n\n"
+            "One-paragraph description of what this project does, who it's for, "
+            "and its current maturity.\n\n"
             "- **Purpose**: [What problem does it solve?]\n"
             "- **Users**: [Who uses it?]\n"
             "- **Status**: [Alpha/Beta/Production]\n"
@@ -2546,13 +2771,14 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
     if languages:
         top_langs = sorted(languages.items(), key=lambda x: x[1], reverse=True)[:5]
         md += f"**Languages**: {', '.join(f'{k} ({v})' for k, v in top_langs)}\n"
-    md += f"\n---\n\n"
+    md += "\n---\n\n"
 
     # Score breakdown
     md += "## Score Breakdown\n\n"
     md += "| Category | Score | Max | Status |\n"
     md += "|----------|-------|-----|--------|\n"
-    md += f"| Section Coverage | {section_score} | 60 | {len(present_headings)}/{len(expected_headings)} sections |\n"
+    section_status = f"{len(present_headings)}/{len(expected_headings)} sections"
+    md += f"| Section Coverage | {section_score} | 60 | {section_status} |\n"
     md += f"| Content Depth | {depth_score} | 20 | {line_count} lines |\n"
     md += f"| Code Blocks | {code_score} | 10 | {code_block_count} blocks |\n"
     md += f"| Specificity | {spec_score} | 10 | {bold_bullets} bold bullets |\n"
@@ -2570,7 +2796,10 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
     # Missing section templates
     if missing_headings:
         md += "## Missing Sections — Copy-Paste Templates\n\n"
-        md += "Add these sections to your CLAUDE.md to reach 100%. Fill in the bracketed placeholders.\n\n"
+        md += (
+            "Add these sections to your CLAUDE.md to reach 100%. "
+            "Fill in the bracketed placeholders.\n\n"
+        )
         for heading in missing_headings:
             template = section_templates.get(heading, f"## {heading}\n\n[Add content here]\n")
             md += f"### Template: {heading}\n\n"
@@ -2581,7 +2810,8 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
     md += "Paste this into Claude Code to auto-generate the missing content:\n\n"
     md += "```\n"
     if missing_headings:
-        md += f"Read my CLAUDE.md and add the following missing sections: {', '.join(missing_headings)}. "
+        sections_csv = ", ".join(missing_headings)
+        md += f"Read my CLAUDE.md and add the following missing sections: {sections_csv}. "
     if line_count <= 150:
         md += "Expand each section with specific details from the actual codebase. "
     if code_block_count < 2:
@@ -2599,7 +2829,8 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
         md += "\n"
 
     md += "---\n\n"
-    md += f"*Generated by [anchormd](https://anchormd.dev) on {datetime.now(UTC).strftime('%Y-%m-%d')}*\n"
+    generated_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    md += f"*Generated by [anchormd](https://anchormd.dev) on {generated_date}*\n"
 
     return {
         "scan_id": scan_id,
@@ -2610,7 +2841,12 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
         "missing_sections": missing_headings,
         "present_sections": present_headings,
         "breakdown": {
-            "sections": {"score": section_score, "max": 60, "present": len(present_headings), "total": len(expected_headings)},
+            "sections": {
+                "score": section_score,
+                "max": 60,
+                "present": len(present_headings),
+                "total": len(expected_headings),
+            },
             "depth": {"score": depth_score, "max": 20, "lines": line_count},
             "code_blocks": {"score": code_score, "max": 10, "count": code_block_count},
             "specificity": {"score": spec_score, "max": 10, "bold_bullets": bold_bullets},
@@ -2620,20 +2856,16 @@ async def get_fix_report(scan_id: str) -> dict[str, Any]:
 
 
 @app.get("/api/scan/{scan_id}/cursorrules")
-async def get_cursorrules(scan_id: str) -> dict[str, Any]:
+async def get_cursorrules(scan_id: str, request: Request) -> dict[str, Any]:
     """Convert a scan result to .cursorrules format for Cursor IDE."""
     import re
 
-    conn = _get_db()
-    try:
-        row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
-    finally:
-        conn.close()
-
+    user = await _get_current_user(request)
+    row = _get_scan_row(scan_id)
     if not row:
         raise HTTPException(status_code=404, detail="Scan not found")
 
-    row_dict = dict(row)
+    row_dict = _ensure_scan_access(row, user)
     if row_dict["status"] != "complete" or not row_dict.get("content"):
         raise HTTPException(status_code=400, detail="Scan not complete")
 
@@ -2659,9 +2891,7 @@ async def get_cursorrules(scan_id: str) -> dict[str, Any]:
     cursorrules = (
         f"# Cursor Rules — {repo_name}\n\n"
         "You are an expert developer working on this project. "
-        "Follow these rules strictly.\n\n"
-        + content.strip()
-        + "\n"
+        "Follow these rules strictly.\n\n" + content.strip() + "\n"
     )
 
     return {
@@ -2744,9 +2974,7 @@ async def get_windsurfrules(scan_id: str) -> dict[str, Any]:
     windsurfrules = (
         f"# Windsurf Rules — {repo_name}\n\n"
         "You are Cascade, an agentic AI coding assistant working on this project. "
-        "Follow these rules strictly.\n\n"
-        + content.strip()
-        + "\n"
+        "Follow these rules strictly.\n\n" + content.strip() + "\n"
     )
 
     return {
@@ -2792,9 +3020,7 @@ async def get_agents_md(scan_id: str) -> dict[str, Any]:
         f"# AGENTS.md — {repo_name}\n\n"
         "Instructions for AI coding agents working in this repository. "
         "Tool-agnostic: applies to Cursor, OpenAI Codex, Claude Code, Copilot, "
-        "Windsurf, and any agent that honors AGENTS.md.\n\n"
-        + content.strip()
-        + "\n"
+        "Windsurf, and any agent that honors AGENTS.md.\n\n" + content.strip() + "\n"
     )
 
     return {

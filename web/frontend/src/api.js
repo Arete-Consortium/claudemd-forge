@@ -65,8 +65,10 @@ export async function getGitHubLoginUrl() {
   return apiGet("/api/auth/github");
 }
 
-export async function exchangeCode(code) {
-  return apiGet(`/api/auth/callback?code=${encodeURIComponent(code)}`);
+export async function exchangeCode(code, state) {
+  return apiGet(
+    `/api/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`
+  );
 }
 
 export async function getMe() {

@@ -10,7 +10,7 @@ import stat
 import time
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -380,7 +380,7 @@ def get_license_info() -> LicenseInfo:
     2. Check fresh cache -> return on hit
     3. Call license server -> cache on success
     4. Server down -> use expired cache with degraded flag
-    5. No cache available -> local-only validation (Pro if checksum passes)
+    5. No cache available -> local-only fallback (or fail closed in strict mode)
     """
     key = _find_license_key()
 
@@ -435,6 +435,7 @@ def get_license_info() -> LicenseInfo:
         tier=Tier.PRO,
         license_key=key,
         valid=True,
+        metadata={"unverified": True},
     )
 
 
@@ -472,7 +473,7 @@ def get_upgrade_message(feature: str) -> str:
     )
 
 
-def check_scan_quota(scan_type: str = "deep_scan") -> dict | None:
+def check_scan_quota(scan_type: str = "deep_scan") -> dict[str, Any] | None:
     """Check remaining scan quota against the license server.
 
     Returns dict with {used, limit, remaining, allowed, period} on success,
@@ -504,14 +505,19 @@ def check_scan_quota(scan_type: str = "deep_scan") -> dict | None:
             timeout=5.0,
         )
         if resp.status_code == 200:
-            return resp.json()
+            payload = resp.json()
+            if isinstance(payload, dict):
+                return cast(dict[str, Any], payload)
     except Exception:
         logger.debug("Usage check failed", exc_info=True)
 
     return None  # Server unavailable — fail open
 
 
-def record_scan(scan_type: str = "deep_scan", repo_fingerprint: str | None = None) -> dict | None:
+def record_scan(
+    scan_type: str = "deep_scan",
+    repo_fingerprint: str | None = None,
+) -> dict[str, Any] | None:
     """Record a scan against the license server quota.
 
     Returns dict with {used, limit, remaining, allowed, period} on success,
@@ -541,7 +547,9 @@ def record_scan(scan_type: str = "deep_scan", repo_fingerprint: str | None = Non
             timeout=5.0,
         )
         if resp.status_code == 200:
-            return resp.json()
+            payload = resp.json()
+            if isinstance(payload, dict):
+                return cast(dict[str, Any], payload)
     except Exception:
         logger.debug("Usage record failed", exc_info=True)
 

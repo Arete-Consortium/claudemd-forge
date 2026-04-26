@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from base64 import b64encode
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -67,33 +68,38 @@ def clone_repo(url: str, dest: Path, token: str | None = None) -> None:
     When token is provided, uses it for authenticated cloning (private repos).
     Raises RuntimeError on failure.
     """
-    clone_url = url
-    if token:
-        parsed = urlparse(url)
-        clone_url = f"https://x-access-token:{token}@{parsed.hostname}{parsed.path}"
-
     cmd = [
         "git",
         "clone",
         "--depth=1",
         "--single-branch",
-        clone_url,
+        url,
         str(dest),
     ]
     try:
+        env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"}
+        if token:
+            encoded_auth = b64encode(f"x-access-token:{token}".encode()).decode()
+            env.update(
+                {
+                    "GIT_CONFIG_COUNT": "1",
+                    "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+                    "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {encoded_auth}",
+                }
+            )
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=_CLONE_TIMEOUT,
-            env={**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_TERMINAL_PROMPT": "0"},
+            env=env,
         )
         # Disable git hooks post-clone to prevent arbitrary code execution
         hooks_dir = dest / ".git" / "hooks"
         if hooks_dir.exists():
             shutil.rmtree(hooks_dir)
         if result.returncode != 0:
-            stderr = result.stderr.strip()
+            stderr = _sanitize_clone_error(result.stderr.strip(), url, token)
             if "not found" in stderr.lower() or "404" in stderr:
                 raise RuntimeError("Repository not found. Is it public?")
             raise RuntimeError(f"git clone failed: {stderr[:200]}")
@@ -166,3 +172,11 @@ def generate_claude_md(repo_url: str, token: str | None = None) -> GenerateResul
     finally:
         # Clean up cloned repo.
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def _sanitize_clone_error(stderr: str, repo_url: str, token: str | None) -> str:
+    """Remove secrets from git stderr before returning it to callers."""
+    sanitized = stderr.replace(repo_url, "[repo]")
+    if token:
+        sanitized = sanitized.replace(token, "[secure-token]")
+    return sanitized
