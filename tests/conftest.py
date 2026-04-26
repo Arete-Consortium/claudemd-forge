@@ -15,7 +15,7 @@ def tmp_project(tmp_path: Path) -> Path:
     # Python source files
     src = tmp_path / "src" / "myapp"
     src.mkdir(parents=True)
-    (src / "__init__.py").write_text('__version__ = "0.1.0"\n')
+    (src / "__init__.py").write_text('__version__ = "0.4.0"\n')
     (src / "main.py").write_text(
         'def main() -> None:\n    print("hello")\n\n\nif __name__ == "__main__":\n    main()\n'
     )
@@ -35,7 +35,7 @@ def tmp_project(tmp_path: Path) -> Path:
 
     # Config files
     (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "myapp"\nversion = "0.1.0"\n'
+        '[project]\nname = "myapp"\nversion = "0.4.0"\n'
         'requires-python = ">=3.11"\n'
         'dependencies = ["fastapi>=0.100", "pydantic>=2.0"]\n\n'
         "[project.optional-dependencies]\n"

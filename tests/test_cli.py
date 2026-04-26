@@ -7,7 +7,8 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from anchormd.cli import app
+from anchormd import __version__
+from anchormd.cli import _inject_overview_description, app
 
 runner = CliRunner()
 
@@ -15,6 +16,24 @@ runner = CliRunner()
 def _normalized(output: str) -> str:
     """Collapse whitespace for assertion matching (rich wraps long lines)."""
     return " ".join(output.split())
+
+
+class TestOverviewInjection:
+    def test_replaces_project_overview_paragraph(self) -> None:
+        content = (
+            "# CLAUDE.md — demo\n\n"
+            "## Project Overview\n\n"
+            "demo — Project context inferred from repository structure and tooling.\n\n"
+            "## Current State\n\n"
+            "- **Language**: Python\n"
+        )
+        result = _inject_overview_description(content, "Custom project description.")
+        assert "Custom project description." in result
+        assert "Project context inferred from repository structure and tooling." not in result
+
+    def test_noop_when_overview_section_missing(self) -> None:
+        content = "# CLAUDE.md — demo\n\n## Current State\n\n- **Language**: Python\n"
+        assert _inject_overview_description(content, "Custom project description.") == content
 
 
 class TestGenerate:
@@ -147,7 +166,6 @@ class TestHelp:
         assert "CLAUDE.md" in result.output
 
     def test_version(self) -> None:
-        from anchormd import __version__
 
         result = runner.invoke(app, ["--version"])
         assert result.exit_code == 0

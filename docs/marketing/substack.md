@@ -53,4 +53,4 @@ CLI: `pip install anchormd && anchormd generate .`
 
 ---
 
-*anchormd is MIT licensed. Pro tier ($8/mo) adds interactive init, diff detection, and tech debt scanning. Deep scan reports ($29 one-time) for full architecture audits with recommendations.*
+*anchormd is licensed under BSL-1.1 (with an MIT change date). Pro tier ($8/mo) adds interactive init, diff detection, and tech debt scanning. Deep scan reports ($29 one-time) for full architecture audits with recommendations.*

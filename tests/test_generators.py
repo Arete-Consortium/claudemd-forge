@@ -64,10 +64,10 @@ class TestSectionGenerator:
     def test_current_state_uses_structure_version(self, tmp_project: Path) -> None:
         config = ForgeConfig(root_path=tmp_project)
         structure = CodebaseScanner(config).scan()
-        # The tmp_project fixture has pyproject.toml with version "0.1.0"
+        # The tmp_project fixture has pyproject.toml with version "0.4.0"
         gen = SectionGenerator()
         result = gen.generate_current_state(structure)
-        assert "0.1.0" in result
+        assert "0.4.0" in result
 
     def test_current_state_omits_version_when_none(self, tmp_path: Path) -> None:
         config = ForgeConfig(root_path=tmp_path)
@@ -89,6 +89,12 @@ class TestSectionGenerator:
         )
         assert "Explicit" in result
         assert "Fallback" not in result
+
+    def test_project_overview_default_fallback_is_actionable(self) -> None:
+        gen = SectionGenerator()
+        result = gen.generate_project_overview("MyApp")
+        assert "TODO" not in result
+        assert "Project context inferred from repository structure and tooling." in result
 
     def test_dependencies_uses_declared_deps(self, tmp_project: Path) -> None:
         config = ForgeConfig(root_path=tmp_project)

@@ -18,7 +18,9 @@ It's the audit, not the generator, that I think is novel. A half-written CLAUDE.
 
 **CLI:** `pip install anchormd && anchormd generate .`
 
-MIT licensed CLI, ~700 tests. Pro tier ($8/mo) adds interactive `init`, `diff` (drift detection), and `tech-debt` scanning. One-time $29 deep-scan report for a full architectural audit.
+BSL-1.1 licensed CLI (with MIT change date), ~700 tests. Pro tier ($8/mo) adds
+interactive `init`, `diff` (drift detection), and `tech-debt` scanning.
+One-time $29 deep-scan report for a full architectural audit.
 
 Source: https://github.com/Arete-Consortium/anchormd
 

@@ -54,10 +54,10 @@ Running `anchormd generate .` on a FastAPI project produces:
 # CLAUDE.md — my-api
 
 ## Project Overview
-my-api — TODO: Add project description.
+my-api — FastAPI service for account and billing workflows.
 
 ## Current State
-- **Version**: 0.1.0
+- **Version**: 0.4.0
 - **Language**: Python
 - **Files**: 47 across 2 languages
 - **Lines**: 3,204
@@ -102,7 +102,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v6
-      - uses: Arete-Consortium/anchormd@v0.1.0
+      - uses: Arete-Consortium/anchormd@v0.5.0
         with:
           fail-below: 40     # Minimum passing score (0-100)
           comment: true       # Post results as PR comment
@@ -187,4 +187,4 @@ ruff format src/ tests/
 
 ## License
 
-MIT
+Business Source License 1.1 (BSL-1.1). See [`LICENSE`](LICENSE) for terms and the MIT change date.

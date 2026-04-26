@@ -5,7 +5,9 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import re
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -56,6 +58,18 @@ def main(
     ),
 ) -> None:
     """AnchorMD — Generate and audit CLAUDE.md files for AI coding agents."""
+
+
+def _inject_overview_description(content: str, description: str) -> str:
+    """Replace the first project overview paragraph with a user-provided description."""
+    if not description:
+        return content
+
+    pattern = re.compile(r"(## Project Overview\n\n)(.*?)(\n\n)", re.DOTALL)
+    match = pattern.search(content)
+    if not match:
+        return content
+    return pattern.sub(lambda m: f"{m.group(1)}{description}{m.group(3)}", content, count=1)
 
 
 @app.command()
@@ -398,7 +412,7 @@ def fleet(
     import contextlib
     import io
 
-    def _audit_one(claude_path: Path) -> dict:
+    def _audit_one(claude_path: Path) -> dict[str, Any]:
         project_root = claude_path.parent
         project_name = project_root.name
         try:
@@ -431,7 +445,7 @@ def fleet(
             }
 
     console.print(f"[dim]Auditing {len(claude_files)} project(s)...[/dim]")
-    results: list[dict] = []
+    results: list[dict[str, Any]] = []
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -714,10 +728,7 @@ def init(
 
         # Inject user description if provided.
         if description:
-            content = content.replace(
-                f"{root.name} — TODO: Add project description.",
-                description,
-            )
+            content = _inject_overview_description(content, description)
 
         out_path = root / "CLAUDE.md"
         out_path.write_text(content)

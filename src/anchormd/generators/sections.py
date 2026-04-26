@@ -47,6 +47,8 @@ _ANTI_PATTERN_RULES: dict[str, list[str]] = {
     ],
 }
 
+DEFAULT_OVERVIEW_SUFFIX = "Project context inferred from repository structure and tooling."
+
 
 class SectionGenerator:
     """Generates individual CLAUDE.md sections from analysis results."""
@@ -68,7 +70,7 @@ class SectionGenerator:
         if desc:
             lines.append(desc)
         else:
-            lines.append(f"{project_name} — TODO: Add project description.")
+            lines.append(f"{project_name} — {DEFAULT_OVERVIEW_SUFFIX}")
         lines.append("")
         return "\n".join(lines)
 
@@ -101,8 +103,8 @@ class SectionGenerator:
         top_files: set[str] = set()
         second_level: dict[str, list[str]] = {}
 
-        for d in structure.directories:
-            parts = d.parts
+        for directory_path in structure.directories:
+            parts = directory_path.parts
             if len(parts) == 1:
                 top_dirs.add(parts[0])
             elif len(parts) == 2:
@@ -116,10 +118,10 @@ class SectionGenerator:
             if len(parts) == 1:
                 top_files.add(parts[0])
 
-        for d in sorted(top_dirs):
-            lines.append(f"├── {d}/")
-            if d in second_level:
-                children = sorted(second_level[d])
+        for dir_name in sorted(top_dirs):
+            lines.append(f"├── {dir_name}/")
+            if dir_name in second_level:
+                children = sorted(second_level[dir_name])
                 for i, child in enumerate(children[:10]):
                     prefix = "│   └──" if i == len(children) - 1 else "│   ├──"
                     lines.append(f"{prefix} {child}/")

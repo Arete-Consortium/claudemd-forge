@@ -21,4 +21,4 @@ I built **anchormd** to automate this. It scans your codebase and generates a co
 
 One-click export to the native format for each agent: `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md`, and `.windsurfrules`. Or push a PR to your repo directly.
 
-~700 tests, MIT licensed. Feedback welcome.
+~700 tests. Licensed under BSL-1.1 (with an MIT change date). Feedback welcome.
